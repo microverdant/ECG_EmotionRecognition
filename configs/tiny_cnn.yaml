@@ -1,9 +1,10 @@
 sample_rate: 256
 window_seconds: 10
 stride_seconds: 5
-num_classes: 4
+num_classes: 3
 batch_size: 128
 max_epochs: 80
 early_stopping_patience: 10
+learning_rate: 0.0005
+augmentation: true
 random_seed: 42
-

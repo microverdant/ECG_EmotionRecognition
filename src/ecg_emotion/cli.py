@@ -31,6 +31,8 @@ def build_parser() -> argparse.ArgumentParser:
     tiny_cnn.add_argument("--batch-size", type=int, default=128)
     tiny_cnn.add_argument("--epochs", type=int, default=80)
     tiny_cnn.add_argument("--patience", type=int, default=10)
+    tiny_cnn.add_argument("--learning-rate", type=float, default=5e-4)
+    tiny_cnn.add_argument("--disable-augmentation", action="store_true")
     tiny_cnn.add_argument("--seed", type=int, default=42)
 
     cross_validation = subparsers.add_parser(
@@ -85,7 +87,9 @@ def main() -> None:
             batch_size=args.batch_size,
             max_epochs=args.epochs,
             early_stopping_patience=args.patience,
+            learning_rate=args.learning_rate,
             random_seed=args.seed,
+            use_augmentation=not args.disable_augmentation,
         )
         test_metrics = result["metrics"]["test"]
         print(

@@ -22,9 +22,10 @@ def train_tiny_cnn(
     batch_size: int = 128,
     max_epochs: int = 80,
     early_stopping_patience: int = 10,
-    learning_rate: float = 1e-3,
+    learning_rate: float = 5e-4,
     random_seed: int = 42,
     num_threads: int = 4,
+    use_augmentation: bool = True,
 ) -> dict[str, Any]:
     """Train and save a TinyCNN1D using deterministic subject-level splits."""
 
@@ -62,8 +63,15 @@ def train_tiny_cnn(
     class_counts = np.bincount(dataset.labels[split_indexes["train"]], minlength=num_classes)
     weights = len(split_indexes["train"]) / np.maximum(class_counts, 1)
     class_weights = torch.tensor(weights / weights.mean(), dtype=torch.float32)
-    loss_function = torch.nn.CrossEntropyLoss(weight=class_weights)
+    loss_function = torch.nn.CrossEntropyLoss(weight=class_weights, label_smoothing=0.05)
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer,
+        mode="max",
+        factor=0.5,
+        patience=2,
+        min_lr=1e-5,
+    )
 
     best_state: dict[str, Any] | None = None
     best_validation_f1 = -1.0
@@ -75,6 +83,8 @@ def train_tiny_cnn(
         running_loss = 0.0
         sample_count = 0
         for batch_signals, batch_labels in train_loader:
+            if use_augmentation:
+                batch_signals = _augment_batch(batch_signals)
             optimizer.zero_grad()
             logits = model(batch_signals)
             loss = loss_function(logits, batch_labels)
@@ -84,10 +94,12 @@ def train_tiny_cnn(
             sample_count += len(batch_labels)
 
         validation_metrics = _evaluate(model, validation_loader, num_classes)
+        scheduler.step(validation_metrics["macro_f1"])
         epoch_record = {
             "epoch": float(epoch),
             "train_loss": running_loss / max(sample_count, 1),
             "validation_macro_f1": validation_metrics["macro_f1"],
+            "learning_rate": float(optimizer.param_groups[0]["lr"]),
         }
         history.append(epoch_record)
 
@@ -131,13 +143,14 @@ def train_tiny_cnn(
         output_dir / "tiny_cnn.pt",
     )
     result = {
-        "model_name": "tiny-cnn-1d",
+        "model_name": "tiny-cnn-1d-v2",
         "data_path": str(Path(data_path)),
         "num_samples": dataset.num_samples,
         "num_subjects": dataset.num_subjects,
         "signal_length": dataset.signal_length,
         "parameter_count": sum(parameter.numel() for parameter in model.parameters()),
         "random_seed": random_seed,
+        "augmentation": use_augmentation,
         "epochs_completed": len(history),
         "split_subjects": split_subjects,
         "metrics": split_metrics,
@@ -146,6 +159,18 @@ def train_tiny_cnn(
     }
     (output_dir / "metrics.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     return result
+
+
+def _augment_batch(signals):
+    """Apply inexpensive label-preserving augmentation to normalized ECG windows."""
+
+    import torch
+
+    gains = torch.empty((len(signals), 1, 1)).uniform_(0.9, 1.1)
+    augmented = signals * gains + 0.015 * torch.randn_like(signals)
+    max_shift = max(1, signals.shape[-1] // 20)
+    shift = int(torch.randint(-max_shift, max_shift + 1, size=(1,)).item())
+    return torch.roll(augmented, shifts=shift, dims=-1)
 
 
 def _evaluate(model, loader, num_classes: int) -> dict[str, Any]:
