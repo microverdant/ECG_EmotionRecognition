@@ -3,18 +3,27 @@
 from __future__ import annotations
 
 import pickle
+from fractions import Fraction
 from pathlib import Path
 
 import numpy as np
+from scipy.signal import resample_poly
 
 from .data import ECGDataset, save_npz
 from .preprocessing import clean_ecg, make_windows
 
-WESAD_LABEL_MAP = {
-    1: 0,  # baseline
-    2: 1,  # stress
-    3: 2,  # amusement
-    4: 3,  # meditation
+WESAD_LABEL_MAPS = {
+    "core": {
+        1: 0,  # baseline
+        2: 1,  # stress
+        3: 2,  # amusement
+    },
+    "extended": {
+        1: 0,  # baseline
+        2: 1,  # stress
+        3: 2,  # amusement
+        4: 3,  # meditation
+    },
 }
 
 
@@ -25,6 +34,8 @@ def load_wesad_subject(
     stride_seconds: float = 5.0,
     min_label_purity: float = 0.8,
     line_frequency: float | None = 50.0,
+    target_sample_rate: float | None = None,
+    label_set: str = "core",
 ) -> ECGDataset:
     """Load one standard WESAD subject pickle and return prepared ECG windows."""
 
@@ -44,10 +55,19 @@ def load_wesad_subject(
         raise ValueError("WESAD ECG and label arrays must have the same length")
 
     cleaned = clean_ecg(signal, sample_rate=sample_rate, line_frequency=line_frequency)
+    effective_sample_rate = sample_rate
+    if target_sample_rate is not None and target_sample_rate != sample_rate:
+        cleaned, labels = resample_signal_and_labels(
+            cleaned,
+            labels,
+            source_sample_rate=sample_rate,
+            target_sample_rate=target_sample_rate,
+        )
+        effective_sample_rate = target_sample_rate
     windows, raw_labels, subjects = make_windows(
         cleaned,
-        window_size=int(round(window_seconds * sample_rate)),
-        stride=int(round(stride_seconds * sample_rate)),
+        window_size=int(round(window_seconds * effective_sample_rate)),
+        stride=int(round(stride_seconds * effective_sample_rate)),
         subject_id=path.stem,
         labels=labels,
         min_label_purity=min_label_purity,
@@ -55,9 +75,10 @@ def load_wesad_subject(
     if raw_labels is None:
         raise RuntimeError("WESAD preparation unexpectedly produced unlabeled windows")
 
-    keep = np.isin(raw_labels, list(WESAD_LABEL_MAP))
+    label_map = _get_label_map(label_set)
+    keep = np.isin(raw_labels, list(label_map))
     mapped_labels = np.asarray(
-        [WESAD_LABEL_MAP[int(label)] for label in raw_labels[keep]],
+        [label_map[int(label)] for label in raw_labels[keep]],
         dtype=np.int64,
     )
     return ECGDataset(windows[keep], mapped_labels, subjects[keep])
@@ -72,6 +93,8 @@ def prepare_wesad(
     min_label_purity: float = 0.8,
     line_frequency: float | None = 50.0,
     excluded_subjects: set[str] | None = None,
+    target_sample_rate: float | None = None,
+    label_set: str = "core",
 ) -> ECGDataset:
     """Prepare all available WESAD subject pickle files into one compressed archive."""
 
@@ -93,6 +116,8 @@ def prepare_wesad(
                 stride_seconds=stride_seconds,
                 min_label_purity=min_label_purity,
                 line_frequency=line_frequency,
+                target_sample_rate=target_sample_rate,
+                label_set=label_set,
             )
         )
 
@@ -105,3 +130,27 @@ def prepare_wesad(
     )
     save_npz(output_path, combined)
     return combined
+
+
+def resample_signal_and_labels(
+    signal: np.ndarray,
+    labels: np.ndarray,
+    source_sample_rate: float,
+    target_sample_rate: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Resample ECG with anti-aliasing and align labels by nearest source sample."""
+
+    if source_sample_rate <= 0 or target_sample_rate <= 0:
+        raise ValueError("sample rates must be positive")
+    ratio = Fraction(target_sample_rate / source_sample_rate).limit_denominator(1000)
+    resampled_signal = resample_poly(signal, ratio.numerator, ratio.denominator).astype(np.float32)
+    source_positions = np.arange(len(resampled_signal)) * source_sample_rate / target_sample_rate
+    label_indexes = np.clip(np.rint(source_positions).astype(int), 0, len(labels) - 1)
+    return resampled_signal, labels[label_indexes]
+
+
+def _get_label_map(label_set: str) -> dict[int, int]:
+    normalized = label_set.strip().lower()
+    if normalized not in WESAD_LABEL_MAPS:
+        raise ValueError(f"Unsupported WESAD label set: {label_set}")
+    return WESAD_LABEL_MAPS[normalized]

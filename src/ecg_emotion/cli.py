@@ -6,7 +6,7 @@ import argparse
 from pathlib import Path
 
 from .synthetic import generate_demo_dataset
-from .training import train_feature_baseline
+from .training import cross_validate_feature_baseline, train_feature_baseline
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -32,6 +32,21 @@ def build_parser() -> argparse.ArgumentParser:
     tiny_cnn.add_argument("--epochs", type=int, default=80)
     tiny_cnn.add_argument("--patience", type=int, default=10)
     tiny_cnn.add_argument("--seed", type=int, default=42)
+
+    cross_validation = subparsers.add_parser(
+        "cross-validate-baseline",
+        help="run subject-level GroupKFold evaluation for a feature baseline",
+    )
+    cross_validation.add_argument("--data", type=Path, required=True)
+    cross_validation.add_argument(
+        "--output",
+        type=Path,
+        default=Path("artifacts/cross-validation"),
+    )
+    cross_validation.add_argument("--model", default="logistic-regression")
+    cross_validation.add_argument("--sample-rate", type=float, default=256.0)
+    cross_validation.add_argument("--folds", type=int, default=5)
+    cross_validation.add_argument("--seed", type=int, default=42)
     return parser
 
 
@@ -77,6 +92,22 @@ def main() -> None:
             f"{result['model_name']} test accuracy={test_metrics['accuracy']:.4f}, "
             f"macro_f1={test_metrics['macro_f1']:.4f}, "
             f"epochs={result['epochs_completed']}"
+        )
+        return
+
+    if args.command == "cross-validate-baseline":
+        result = cross_validate_feature_baseline(
+            data_path=args.data,
+            output_dir=args.output,
+            model_name=args.model,
+            sample_rate=args.sample_rate,
+            num_folds=args.folds,
+            random_seed=args.seed,
+        )
+        macro_f1 = result["aggregate"]["macro_f1"]
+        print(
+            f"{result['model_name']} {result['num_folds']}-fold macro_f1="
+            f"{macro_f1['mean']:.4f} +/- {macro_f1['std']:.4f}"
         )
 
 
