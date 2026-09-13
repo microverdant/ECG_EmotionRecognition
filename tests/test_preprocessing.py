@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from ecg_emotion.preprocessing import make_windows, normalize_windows, zscore
+from ecg_emotion.preprocessing import make_windows, normalize_windows, notch_filter, zscore
 
 
 def test_make_windows_filters_transition_windows() -> None:
@@ -30,3 +30,11 @@ def test_zscore_rejects_empty_signal() -> None:
     with pytest.raises(ValueError, match="must not be empty"):
         zscore(np.array([]))
 
+
+def test_notch_filter_preserves_signal_shape_and_finite_values() -> None:
+    sample_rate = 256
+    time = np.arange(sample_rate * 4) / sample_rate
+    signal = np.sin(2 * np.pi * 1.2 * time) + 0.2 * np.sin(2 * np.pi * 50 * time)
+    filtered = notch_filter(signal, sample_rate=sample_rate, line_frequency=50.0)
+    assert filtered.shape == signal.shape
+    assert np.isfinite(filtered).all()
