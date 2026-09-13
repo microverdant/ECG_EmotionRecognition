@@ -34,7 +34,7 @@ def notch_filter(
     signal = _as_signal(signal)
     if not 0 < line_frequency < sample_rate / 2:
         raise ValueError("line_frequency must be below the Nyquist frequency")
-    b, a = iirnotch(line_frequency, quality_factor=30.0, fs=sample_rate)
+    b, a = iirnotch(line_frequency, Q=30.0, fs=sample_rate)
     return filtfilt(b, a, signal).astype(np.float32)
 
 
