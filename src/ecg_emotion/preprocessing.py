@@ -24,7 +24,11 @@ def bandpass_filter(
     return sosfiltfilt(sos, signal).astype(np.float32)
 
 
-def notch_filter(signal: np.ndarray, sample_rate: float, line_frequency: float = 50.0) -> np.ndarray:
+def notch_filter(
+    signal: np.ndarray,
+    sample_rate: float,
+    line_frequency: float = 50.0,
+) -> np.ndarray:
     """Remove a power-line frequency using a zero-phase notch filter."""
 
     signal = _as_signal(signal)
@@ -111,7 +115,8 @@ def make_windows(
     if not windows:
         empty = np.empty((0, window_size), dtype=np.float32)
         empty_subjects = np.empty((0,), dtype=str)
-        return empty, None if label_array is None else np.empty((0,), dtype=np.int64), empty_subjects
+        empty_labels = None if label_array is None else np.empty((0,), dtype=np.int64)
+        return empty, empty_labels, empty_subjects
 
     return (
         np.asarray(windows, dtype=np.float32),
@@ -127,4 +132,3 @@ def _as_signal(signal: np.ndarray) -> np.ndarray:
     if not np.isfinite(signal).all():
         raise ValueError("signal must contain only finite values")
     return signal
-
