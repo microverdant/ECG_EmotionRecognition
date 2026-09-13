@@ -44,6 +44,9 @@ official access process and place prepared data under `data/`, following the con
 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md). Generated data and model artifacts are ignored by
 Git by default.
 
+For standard WESAD pickle files, follow [`docs/WESAD_SETUP.md`](docs/WESAD_SETUP.md) and run the
+included preparation script before training.
+
 ## Development principles
 
 - Split by subject before creating overlapping windows.
