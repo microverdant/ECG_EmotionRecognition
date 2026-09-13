@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.Python
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+ENV/
+
+# Packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Local data and generated artifacts
+data/*
+!data/.gitkeep
+artifacts/*
+!artifacts/.gitkeep
+reports/generated/*
+!reports/generated/.gitkeep
+*.joblib
+*.pt
+*.pth
+*.onnx
+*.h5
+*.keras
+*.npz
+*.npy
+*.csv
+
+# IDE and OS files
+.idea/
+.vscode/
+*.code-workspace
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+.env.*
+!.env.example
+
