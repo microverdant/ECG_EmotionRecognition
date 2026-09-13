@@ -26,15 +26,19 @@ python scripts/prepare_wesad.py `
   --input data/raw/WESAD `
   --output data/processed/wesad_ecg.npz `
   --sample-rate 700 `
-  --window-seconds 10 `
-  --stride-seconds 5
+  --target-sample-rate 140 `
+  --window-seconds 30 `
+  --stride-seconds 15 `
+  --label-set core
 ```
 
-The output follows [`DATA_CONTRACT.md`](DATA_CONTRACT.md): every row contains one ECG window, a
-zero-based four-class label, and a subject identifier.
+The optional 140 Hz target rate reduces each 30-second window from 21,000 to 4,200 samples while
+retaining a Nyquist frequency above the preprocessing passband. The `core` label set contains the
+three affective conditions used by the primary WESAD benchmark. The output follows
+[`DATA_CONTRACT.md`](DATA_CONTRACT.md): every row contains one ECG window, a zero-based four-class
+label, and a subject identifier.
 
 ## 4. Verify the split before training
 
 The training utilities split by subject. Never create overlapping windows across the split boundary,
 and never fit normalization statistics using validation or test subjects.
-
