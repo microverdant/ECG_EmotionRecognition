@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+from scipy.integrate import trapezoid
 from scipy.signal import find_peaks, periodogram
 
 FEATURE_NAMES = (
@@ -50,7 +51,7 @@ def _extract_single(signal: np.ndarray, sample_rate: float) -> np.ndarray:
 
     def band_power(low: float, high: float) -> float:
         mask = (freqs >= low) & (freqs < high)
-        return float(np.trapz(power[mask], freqs[mask])) if mask.any() else 0.0
+        return float(trapezoid(power[mask], freqs[mask])) if mask.any() else 0.0
 
     values = np.array(
         [
