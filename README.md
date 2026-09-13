@@ -1,5 +1,7 @@
 # ECG Emotion Recognition
 
+[![CI](https://github.com/microverdant/ECG_EmotionRecognition/actions/workflows/ci.yml/badge.svg)](https://github.com/microverdant/ECG_EmotionRecognition/actions/workflows/ci.yml)
+
 > A reproducible and lightweight pipeline for subject-independent emotion recognition from ECG signals.
 
 ## Project status
@@ -36,6 +38,16 @@ Raw ECG
 3. Future work: TCN and feature/representation fusion.
 
 Large recurrent architectures are not part of the default laptop workflow.
+
+## WESAD benchmark
+
+The primary subject-independent benchmark uses 15 subjects, 2,140 windows, 140 Hz ECG, 30-second
+windows, and five-fold GroupKFold evaluation. The best current feature baseline is Logistic
+Regression with `0.5716 ± 0.0721` Macro-F1. Tiny CNN v2 contains 57,075 parameters and completed its
+locked-split laptop experiment in approximately 40 seconds.
+
+See [`reports/BENCHMARK.md`](reports/BENCHMARK.md) for the full protocol, fold-level results, neural
+iteration, reproduction commands, and limitations.
 
 ## Data policy
 
@@ -96,7 +108,9 @@ metrics must not be presented as research results.
 - [x] Add a compact 1D-CNN training path.
 - [x] Add evaluation artifacts and reproducibility checks.
 - [x] Add a local Streamlit inference demo.
-- [ ] Evaluate the official prepared dataset with a locked subject-level protocol.
+- [x] Evaluate the official prepared dataset with grouped subject-level baselines.
+- [ ] Add grouped cross-validation for Tiny CNN v2.
+- [ ] Add confidence calibration and subject-domain robustness experiments.
 
 ## License
 
