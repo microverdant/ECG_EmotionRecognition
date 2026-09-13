@@ -5,9 +5,8 @@
 ## Project status
 
 This repository is an independent, clean-room implementation focused on methodological clarity,
-CPU-friendly experimentation, and reproducible evaluation. The current release contains the project
-foundation and signal-processing contract. Model training and evaluation components are being added
-incrementally.
+CPU-friendly experimentation, and reproducible evaluation. It contains signal processing, feature
+baselines, an optional compact 1D-CNN, tests, and a local inference demo.
 
 ## Research question
 
@@ -30,11 +29,11 @@ Raw ECG
   -> local inference demo
 ```
 
-## Planned model tracks
+## Model tracks
 
 1. HRV/statistical features with Logistic Regression and Random Forest baselines.
-2. A compact 1D-CNN or TCN for raw ECG windows.
-3. Optional fusion of interpretable ECG features and learned representations.
+2. A compact 1D-CNN for raw ECG windows.
+3. Future work: TCN and feature/representation fusion.
 
 Large recurrent architectures are not part of the default laptop workflow.
 
@@ -53,17 +52,50 @@ Git by default.
 - Record seeds, configuration, metrics, and model metadata for every run.
 - Treat this as an experimental research tool, not a medical diagnostic system.
 
+## Quick start
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
+python -m ecg_emotion.cli make-demo-data --output data/demo_ecg.npz
+python -m ecg_emotion.cli train-baseline `
+  --data data/demo_ecg.npz `
+  --output artifacts/demo-baseline `
+  --sample-rate 128
+```
+
+The baseline command writes a serialized model and `metrics.json`. To run the optional neural model:
+
+```powershell
+python -m pip install -e ".[deep-learning]"
+python -m ecg_emotion.cli train-tiny-cnn `
+  --data data/demo_ecg.npz `
+  --output artifacts/tiny-cnn `
+  --sample-rate 128
+```
+
+To launch the local showcase after training a baseline:
+
+```powershell
+python -m pip install -e ".[demo]"
+streamlit run demo/app.py
+```
+
+The bundled synthetic data is for smoke testing only. It is not a physiological dataset and its
+metrics must not be presented as research results.
+
 ## Roadmap
 
 - [x] Establish a modern Python project and data contract.
 - [ ] Implement filtering, windowing, and subject-level splits.
-- [ ] Add fast feature-based baselines.
-- [ ] Add the compact 1D-CNN/TCN training path.
-- [ ] Add evaluation reports and reproducibility checks.
-- [ ] Add a local Streamlit inference demo.
+- [x] Add fast feature-based baselines.
+- [x] Add a compact 1D-CNN training path.
+- [x] Add evaluation artifacts and reproducibility checks.
+- [x] Add a local Streamlit inference demo.
+- [ ] Evaluate the official prepared dataset with a locked subject-level protocol.
 
 ## License
 
 Released under the [MIT License](LICENSE). Dataset access and use remain subject to the dataset's
 own terms.
-
