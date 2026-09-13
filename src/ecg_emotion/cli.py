@@ -23,6 +23,15 @@ def build_parser() -> argparse.ArgumentParser:
     baseline.add_argument("--model", default="logistic-regression")
     baseline.add_argument("--sample-rate", type=float, default=256.0)
     baseline.add_argument("--seed", type=int, default=42)
+
+    tiny_cnn = subparsers.add_parser("train-tiny-cnn", help="train the optional compact 1D-CNN")
+    tiny_cnn.add_argument("--data", type=Path, required=True)
+    tiny_cnn.add_argument("--output", type=Path, default=Path("artifacts/tiny-cnn"))
+    tiny_cnn.add_argument("--sample-rate", type=float, default=256.0)
+    tiny_cnn.add_argument("--batch-size", type=int, default=128)
+    tiny_cnn.add_argument("--epochs", type=int, default=80)
+    tiny_cnn.add_argument("--patience", type=int, default=10)
+    tiny_cnn.add_argument("--seed", type=int, default=42)
     return parser
 
 
@@ -49,8 +58,27 @@ def main() -> None:
             f"{result['model_name']} test accuracy={test_metrics['accuracy']:.4f}, "
             f"macro_f1={test_metrics['macro_f1']:.4f}"
         )
+        return
+
+    if args.command == "train-tiny-cnn":
+        from .torch_training import train_tiny_cnn
+
+        result = train_tiny_cnn(
+            data_path=args.data,
+            output_dir=args.output,
+            sample_rate=args.sample_rate,
+            batch_size=args.batch_size,
+            max_epochs=args.epochs,
+            early_stopping_patience=args.patience,
+            random_seed=args.seed,
+        )
+        test_metrics = result["metrics"]["test"]
+        print(
+            f"{result['model_name']} test accuracy={test_metrics['accuracy']:.4f}, "
+            f"macro_f1={test_metrics['macro_f1']:.4f}, "
+            f"epochs={result['epochs_completed']}"
+        )
 
 
 if __name__ == "__main__":
     main()
-
