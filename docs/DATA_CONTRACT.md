@@ -16,14 +16,16 @@ must describe the same window.
 
 ## Label contract
 
-The default four-class label mapping is:
+The primary WESAD benchmark label mapping is:
 
 | ID | Name |
 |---:|---|
 | 0 | baseline |
 | 1 | stress |
 | 2 | amusement |
-| 3 | meditation |
+
+An optional extended label set adds `3 = meditation`. Results from the core and extended tasks must
+be reported separately.
 
 If another dataset or label mapping is used, update the configuration and README before reporting
 results.
@@ -40,4 +42,3 @@ Window overlap is allowed only within a split; no subject may appear in more tha
 - Apply filtering consistently across splits.
 - Fit any global normalization statistics on the training subjects only.
 - Save the preprocessing configuration with the experiment output.
-
