@@ -35,6 +35,19 @@ def build_parser() -> argparse.ArgumentParser:
     tiny_cnn.add_argument("--disable-augmentation", action="store_true")
     tiny_cnn.add_argument("--seed", type=int, default=42)
 
+    tiny_lstm = subparsers.add_parser(
+        "train-tiny-lstm", help="train the optional compact convolutional LSTM"
+    )
+    tiny_lstm.add_argument("--data", type=Path, required=True)
+    tiny_lstm.add_argument("--output", type=Path, default=Path("artifacts/tiny-lstm"))
+    tiny_lstm.add_argument("--sample-rate", type=float, default=256.0)
+    tiny_lstm.add_argument("--batch-size", type=int, default=128)
+    tiny_lstm.add_argument("--epochs", type=int, default=80)
+    tiny_lstm.add_argument("--patience", type=int, default=10)
+    tiny_lstm.add_argument("--learning-rate", type=float, default=5e-4)
+    tiny_lstm.add_argument("--disable-augmentation", action="store_true")
+    tiny_lstm.add_argument("--seed", type=int, default=42)
+
     cross_validation = subparsers.add_parser(
         "cross-validate-baseline",
         help="run stratified subject-level cross-validation for a feature baseline",
@@ -68,6 +81,25 @@ def build_parser() -> argparse.ArgumentParser:
     cnn_cross_validation.add_argument("--folds", type=int, default=5)
     cnn_cross_validation.add_argument("--disable-augmentation", action="store_true")
     cnn_cross_validation.add_argument("--seed", type=int, default=42)
+
+    lstm_cross_validation = subparsers.add_parser(
+        "cross-validate-tiny-lstm",
+        help="run subject-independent cross-validation for the optional Tiny LSTM",
+    )
+    lstm_cross_validation.add_argument("--data", type=Path, required=True)
+    lstm_cross_validation.add_argument(
+        "--output",
+        type=Path,
+        default=Path("artifacts/tiny-lstm-cross-validation"),
+    )
+    lstm_cross_validation.add_argument("--sample-rate", type=float, default=256.0)
+    lstm_cross_validation.add_argument("--batch-size", type=int, default=128)
+    lstm_cross_validation.add_argument("--epochs", type=int, default=30)
+    lstm_cross_validation.add_argument("--patience", type=int, default=6)
+    lstm_cross_validation.add_argument("--learning-rate", type=float, default=5e-4)
+    lstm_cross_validation.add_argument("--folds", type=int, default=5)
+    lstm_cross_validation.add_argument("--disable-augmentation", action="store_true")
+    lstm_cross_validation.add_argument("--seed", type=int, default=42)
     return parser
 
 
@@ -118,6 +150,28 @@ def main() -> None:
         )
         return
 
+    if args.command == "train-tiny-lstm":
+        from .torch_training import train_tiny_lstm
+
+        result = train_tiny_lstm(
+            data_path=args.data,
+            output_dir=args.output,
+            sample_rate=args.sample_rate,
+            batch_size=args.batch_size,
+            max_epochs=args.epochs,
+            early_stopping_patience=args.patience,
+            learning_rate=args.learning_rate,
+            random_seed=args.seed,
+            use_augmentation=not args.disable_augmentation,
+        )
+        test_metrics = result["metrics"]["test"]
+        print(
+            f"{result['model_name']} test accuracy={test_metrics['accuracy']:.4f}, "
+            f"macro_f1={test_metrics['macro_f1']:.4f}, "
+            f"epochs={result['epochs_completed']}"
+        )
+        return
+
     if args.command == "cross-validate-baseline":
         result = cross_validate_feature_baseline(
             data_path=args.data,
@@ -138,6 +192,28 @@ def main() -> None:
         from .torch_training import cross_validate_tiny_cnn
 
         result = cross_validate_tiny_cnn(
+            data_path=args.data,
+            output_dir=args.output,
+            sample_rate=args.sample_rate,
+            batch_size=args.batch_size,
+            max_epochs=args.epochs,
+            early_stopping_patience=args.patience,
+            learning_rate=args.learning_rate,
+            num_folds=args.folds,
+            random_seed=args.seed,
+            use_augmentation=not args.disable_augmentation,
+        )
+        macro_f1 = result["aggregate"]["macro_f1"]
+        print(
+            f"{result['model_name']} {result['num_folds']}-fold macro_f1="
+            f"{macro_f1['mean']:.4f} +/- {macro_f1['std']:.4f}"
+        )
+        return
+
+    if args.command == "cross-validate-tiny-lstm":
+        from .torch_training import cross_validate_tiny_lstm
+
+        result = cross_validate_tiny_lstm(
             data_path=args.data,
             output_dir=args.output,
             sample_rate=args.sample_rate,

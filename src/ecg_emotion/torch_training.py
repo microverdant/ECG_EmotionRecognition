@@ -13,7 +13,7 @@ from sklearn.model_selection import StratifiedGroupKFold
 from .data import load_npz, split_by_subject
 from .evaluation import classification_metrics
 from .preprocessing import normalize_windows
-from .torch_models import build_tiny_cnn
+from .torch_models import build_tiny_cnn, build_tiny_lstm
 
 
 def cross_validate_tiny_cnn(
@@ -28,6 +28,8 @@ def cross_validate_tiny_cnn(
     random_seed: int = 42,
     num_threads: int = 4,
     use_augmentation: bool = True,
+    model_factory=build_tiny_cnn,
+    model_name: str = "tiny-cnn-1d-v2",
 ) -> dict[str, Any]:
     """Evaluate TinyCNN with nested subject-level validation folds.
 
@@ -83,6 +85,7 @@ def cross_validate_tiny_cnn(
             learning_rate=learning_rate,
             random_seed=random_seed + fold_index,
             use_augmentation=use_augmentation,
+            model_factory=model_factory,
         )
 
         def loader(indexes: np.ndarray) -> DataLoader:
@@ -146,7 +149,7 @@ def cross_validate_tiny_cnn(
         for metric in scalar_metrics
     }
     result = {
-        "model_name": "tiny-cnn-1d-v2",
+        "model_name": model_name,
         "data_path": str(Path(data_path)),
         "num_samples": dataset.num_samples,
         "num_subjects": dataset.num_subjects,
@@ -155,7 +158,7 @@ def cross_validate_tiny_cnn(
         "signal_length": dataset.signal_length,
         "sample_rate": sample_rate,
         "parameter_count": sum(
-            parameter.numel() for parameter in build_tiny_cnn(num_classes).parameters()
+            parameter.numel() for parameter in model_factory(num_classes).parameters()
         ),
         "random_seed": random_seed,
         "augmentation": use_augmentation,
@@ -175,6 +178,38 @@ def cross_validate_tiny_cnn(
     return result
 
 
+def cross_validate_tiny_lstm(
+    data_path: str | Path,
+    output_dir: str | Path,
+    sample_rate: float = 256.0,
+    batch_size: int = 128,
+    max_epochs: int = 30,
+    early_stopping_patience: int = 6,
+    learning_rate: float = 5e-4,
+    num_folds: int = 5,
+    random_seed: int = 42,
+    num_threads: int = 4,
+    use_augmentation: bool = True,
+) -> dict[str, Any]:
+    """Evaluate the compact convolutional LSTM under grouped cross-validation."""
+
+    return cross_validate_tiny_cnn(
+        data_path=data_path,
+        output_dir=output_dir,
+        sample_rate=sample_rate,
+        batch_size=batch_size,
+        max_epochs=max_epochs,
+        early_stopping_patience=early_stopping_patience,
+        learning_rate=learning_rate,
+        num_folds=num_folds,
+        random_seed=random_seed,
+        num_threads=num_threads,
+        use_augmentation=use_augmentation,
+        model_factory=build_tiny_lstm,
+        model_name="tiny-lstm-1d-v1",
+    )
+
+
 def train_tiny_cnn(
     data_path: str | Path,
     output_dir: str | Path,
@@ -186,6 +221,8 @@ def train_tiny_cnn(
     random_seed: int = 42,
     num_threads: int = 4,
     use_augmentation: bool = True,
+    model_factory=build_tiny_cnn,
+    model_name: str = "tiny-cnn-1d-v2",
 ) -> dict[str, Any]:
     """Train and save a TinyCNN1D using deterministic subject-level splits."""
 
@@ -219,7 +256,7 @@ def train_tiny_cnn(
     validation_loader = DataLoader(
         tensor_dataset(split_indexes["validation"]), batch_size=batch_size, shuffle=False
     )
-    model = build_tiny_cnn(num_classes=num_classes)
+    model = model_factory(num_classes=num_classes)
     class_counts = np.bincount(dataset.labels[split_indexes["train"]], minlength=num_classes)
     weights = len(split_indexes["train"]) / np.maximum(class_counts, 1)
     class_weights = torch.tensor(weights / weights.mean(), dtype=torch.float32)
@@ -303,7 +340,7 @@ def train_tiny_cnn(
         output_dir / "tiny_cnn.pt",
     )
     result = {
-        "model_name": "tiny-cnn-1d-v2",
+        "model_name": model_name,
         "data_path": str(Path(data_path)),
         "num_samples": dataset.num_samples,
         "num_subjects": dataset.num_subjects,
@@ -319,6 +356,36 @@ def train_tiny_cnn(
     }
     (output_dir / "metrics.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     return result
+
+
+def train_tiny_lstm(
+    data_path: str | Path,
+    output_dir: str | Path,
+    sample_rate: float = 256.0,
+    batch_size: int = 128,
+    max_epochs: int = 80,
+    early_stopping_patience: int = 10,
+    learning_rate: float = 5e-4,
+    random_seed: int = 42,
+    num_threads: int = 4,
+    use_augmentation: bool = True,
+) -> dict[str, Any]:
+    """Train and save the compact convolutional LSTM on a locked split."""
+
+    return train_tiny_cnn(
+        data_path=data_path,
+        output_dir=output_dir,
+        sample_rate=sample_rate,
+        batch_size=batch_size,
+        max_epochs=max_epochs,
+        early_stopping_patience=early_stopping_patience,
+        learning_rate=learning_rate,
+        random_seed=random_seed,
+        num_threads=num_threads,
+        use_augmentation=use_augmentation,
+        model_factory=build_tiny_lstm,
+        model_name="tiny-lstm-1d-v1",
+    )
 
 
 def _augment_batch(signals):
@@ -364,6 +431,7 @@ def _fit_tiny_cnn_fold(
     learning_rate: float,
     random_seed: int,
     use_augmentation: bool,
+    model_factory=build_tiny_cnn,
 ):
     """Fit one CNN fold and restore its validation-selected checkpoint."""
 
@@ -381,7 +449,7 @@ def _fit_tiny_cnn_fold(
 
     train_loader = make_loader(train_indexes, shuffle=True)
     validation_loader = make_loader(validation_indexes, shuffle=False)
-    model = build_tiny_cnn(num_classes=num_classes)
+    model = model_factory(num_classes=num_classes)
     class_counts = np.bincount(labels_array[train_indexes], minlength=num_classes)
     weights = len(train_indexes) / np.maximum(class_counts, 1)
     class_weights = torch.tensor(weights / weights.mean(), dtype=torch.float32)
