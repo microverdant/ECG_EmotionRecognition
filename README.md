@@ -21,9 +21,9 @@ the split protocol, Macro-F1, balanced accuracy, confusion matrix, and participa
 ## WESAD benchmark
 
 The primary subject-independent benchmark uses 15 subjects, 2,140 windows, 140 Hz ECG, 30-second
-windows, and five-fold StratifiedGroupKFold evaluation. The selected feature baseline is a regularized
-Logistic Regression with `0.5192 ± 0.1011` Macro-F1. This modest result is deliberate: the protocol
-prioritizes honest performance on unseen people over participant-specific accuracy.
+windows, and five-fold StratifiedGroupKFold evaluation. The selected feature model is a shrinkage LDA
+with `0.5392 ± 0.0227` Macro-F1. This modest result is deliberate: the protocol prioritizes honest
+performance on unseen people over participant-specific accuracy.
 
 See [`reports/BENCHMARK.md`](reports/BENCHMARK.md) for the full protocol, results, reproduction
 commands, and limitations. See [`docs/MODEL_CARD.md`](docs/MODEL_CARD.md) for intended use and known

@@ -2,9 +2,10 @@
 
 ## Selected model
 
-The formal feature-model baseline is L2-regularized multiclass Logistic Regression over 22
-window-level ECG morphology and HRV features. It is selected over Random Forest and RBF-SVM because
-its training-to-validation gap is materially smaller, not because it has the strongest single split.
+The formal feature model is a shrinkage Linear Discriminant Analysis (LDA) over 22 window-level ECG
+morphology and HRV features. It uses standardized inputs and automatic covariance shrinkage, which is
+appropriate when the number of participants is small relative to the feature dimension. It is selected
+over Random Forest, RBF-SVM, and Logistic Regression based on subject-independent cross-validation.
 
 ## Intended use
 
@@ -26,8 +27,8 @@ It is not a clinical, wellness, safety, hiring, or mental-health decision system
 
 The primary result is five-fold `StratifiedGroupKFold`: no participant occurs in both train and test
 sets, while folds are balanced by study condition where possible. The selected model reached Macro-F1
-`0.5192 ± 0.1011` across folds. Large participant variation remains and is reported rather than
-hidden; individual Macro-F1 ranges from 0.046 to 0.848.
+`0.5392 ± 0.0227` across folds. Large participant variation remains and is reported rather than
+hidden; individual Macro-F1 ranges from 0.297 to 0.751.
 
 ## Known limitations
 
