@@ -64,9 +64,16 @@ reduces Log Loss to 0.8308 +/- 0.0366, but Brier score and expected calibration 
 at the same time. It is therefore retained as an auditable experiment rather than silently used as the
 default probability output.
 
-Raw confidence can support selective review: a threshold of 0.80 accepts 51.2% of windows at 78.1%
-accuracy, while a threshold of 0.90 accepts 24.6% at 82.3% accuracy. These are selective metrics, not
-an improvement to overall model accuracy, and the threshold must be revalidated for a new population.
+Training bundles now store a threshold selected from training-only cross-fitted predictions using a
+class-balanced selective-F1 objective with a predefined 30% minimum coverage. In the LOSO audit, the
+empirical-prior mode selected `0.5033 +/- 0.0085` and reached mean coverage `0.9157` at selective
+accuracy `0.7001`; the balanced-prior mode selected `0.5000` and reached coverage `0.8430` at selective
+accuracy `0.6278`. The learned thresholds are not high enough to justify aggressive abstention. These
+are selective metrics, not an improvement to overall model accuracy, and all thresholds must be
+revalidated for a new population.
+
+See [`reports/SELECTIVE_AUDIT.md`](SELECTIVE_AUDIT.md) for class-level acceptance behavior and the
+leakage-safe reproduction command.
 
 ## Robustness checks
 

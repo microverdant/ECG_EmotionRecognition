@@ -35,6 +35,10 @@ See [`reports/BENCHMARK.md`](reports/BENCHMARK.md) for the full protocol, result
 commands, and limitations. See [`docs/MODEL_CARD.md`](docs/MODEL_CARD.md) for intended use and known
 failure modes.
 
+Confidence and abstention are audited separately in [`reports/SELECTIVE_AUDIT.md`](reports/SELECTIVE_AUDIT.md).
+The audit uses training-only OOF threshold selection and reports when confidence is not reliable enough
+to support aggressive rejection.
+
 The participant-domain analysis is available in [`reports/ROBUSTNESS.md`](reports/ROBUSTNESS.md).
 
 ## Data policy
@@ -104,6 +108,7 @@ metrics must not be presented as research results.
 - [x] Evaluate the official prepared dataset with grouped subject-level baselines.
 - [x] Add grouped cross-validation for Tiny CNN v2 and Tiny LSTM v1.
 - [x] Add confidence diagnostics and leakage-safe calibration audit.
+- [x] Add class-balanced selective prediction and abstention audit.
 - [x] Add LOSO subject-domain audit and feature ablation analysis.
 - [ ] Validate calibration and confidence thresholds on larger, more diverse cohorts.
 

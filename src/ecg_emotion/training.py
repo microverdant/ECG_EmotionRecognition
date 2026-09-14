@@ -14,9 +14,11 @@ from .data import load_npz, split_by_subject
 from .evaluation import (
     apply_temperature,
     classification_metrics,
+    fit_confidence_threshold,
     fit_temperature,
     probability_metrics,
     save_json,
+    selective_metrics,
 )
 from .features import FEATURE_NAMES, extract_features
 from .models import build_baseline
@@ -47,6 +49,21 @@ def train_feature_baseline(
     model.fit(feature_matrix[train_indexes], dataset.labels[train_indexes])
 
     labels = sorted(np.unique(dataset.labels).astype(int).tolist())
+    calibration_labels, calibration_probabilities = _cross_fitted_calibration_data(
+        feature_matrix,
+        dataset.labels,
+        dataset.subjects,
+        train_indexes,
+        model_name,
+        random_seed,
+        labels=labels,
+    )
+    confidence_threshold = fit_confidence_threshold(
+        calibration_labels,
+        calibration_probabilities,
+        labels=labels,
+        min_coverage=0.3,
+    )
     split_metrics: dict[str, Any] = {}
     split_subjects: dict[str, list[str]] = {}
     for split_name, indexes in split_indexes.items():
@@ -66,7 +83,18 @@ def train_feature_baseline(
         "sample_rate": sample_rate,
         "feature_names": FEATURE_NAMES,
         "labels": labels,
-        "confidence_threshold": 0.8,
+        "confidence_threshold": confidence_threshold,
+        "confidence_threshold_selection": {
+            "method": "maximum OOF class-balanced selective F1 at predefined minimum coverage",
+            "minimum_coverage": 0.3,
+            "training_only": True,
+            "oof_metrics": selective_metrics(
+                calibration_labels,
+                calibration_probabilities,
+                labels=labels,
+                threshold=confidence_threshold,
+            ),
+        },
     }
     joblib.dump(bundle, output_dir / "model.joblib")
     result = {
@@ -77,6 +105,7 @@ def train_feature_baseline(
         "num_subjects": dataset.num_subjects,
         "random_seed": random_seed,
         "split_subjects": split_subjects,
+        "confidence_threshold": confidence_threshold,
         "metrics": split_metrics,
         "training_seconds": round(time.perf_counter() - started, 4),
     }
@@ -124,6 +153,7 @@ def cross_validate_feature_baseline(
             train_indexes,
             model_name,
             random_seed + fold_index,
+            labels=labels,
         )
         temperature = fit_temperature(
             calibration_labels,
@@ -228,10 +258,20 @@ def _cross_fitted_calibration_data(
     indexes: np.ndarray,
     model_name: str,
     random_seed: int,
+    labels: list[int] | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Generate training-only OOF probabilities for leakage-safe calibration."""
 
-    splitter = StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=random_seed)
+    if labels is None:
+        labels = sorted(np.unique(labels_array).astype(int).tolist())
+    subject_count = len(np.unique(subjects[indexes]))
+    if subject_count < 2:
+        raise ValueError("cross-fitted calibration needs at least two training subjects")
+    splitter = StratifiedGroupKFold(
+        n_splits=min(3, subject_count),
+        shuffle=True,
+        random_state=random_seed,
+    )
     probabilities: list[np.ndarray] = []
     true_labels: list[np.ndarray] = []
     local_features = feature_matrix[indexes]
@@ -243,9 +283,27 @@ def _cross_fitted_calibration_data(
     ):
         model = build_baseline(model_name, random_seed=random_seed + inner_fold)
         model.fit(local_features[inner_train], local_labels[inner_train])
-        probabilities.append(model.predict_proba(local_features[inner_validation]))
+        probabilities.append(
+            _align_probability_columns(
+                model.predict_proba(local_features[inner_validation]), model.classes_, labels
+            )
+        )
         true_labels.append(local_labels[inner_validation])
     return np.concatenate(true_labels), np.vstack(probabilities)
+
+
+def _align_probability_columns(
+    probabilities: np.ndarray,
+    model_classes: np.ndarray,
+    labels: list[int],
+) -> np.ndarray:
+    """Align inner-fold probabilities to the complete dataset label order."""
+
+    aligned = np.zeros((len(probabilities), len(labels)), dtype=np.float64)
+    label_indexes = {int(label): index for index, label in enumerate(labels)}
+    for source_index, label in enumerate(model_classes):
+        aligned[:, label_indexes[int(label)]] = probabilities[:, source_index]
+    return aligned
 
 
 def _aggregate_probability_metrics(results: list[dict[str, float]]) -> dict[str, dict[str, float]]:

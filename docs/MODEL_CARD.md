@@ -46,10 +46,14 @@ trade-off and the wider subject variation are central deployment limitations, no
 ## Confidence policy
 
 Out-of-fold probabilities are audited with Brier score, Log Loss, expected calibration error, and
-coverage at confidence thresholds. The default demo exposes confidence and marks predictions below
-0.80 as low-confidence; this is a review signal, not a clinical guarantee. Temperature scaling is
-implemented and evaluated with cross-fitted training-only predictions, but is not declared universally
-better because different calibration metrics move in different directions.
+class-level selective metrics. Training bundles select their confidence threshold from training-only
+cross-fitted predictions using a class-balanced selective-F1 objective with a predefined minimum
+coverage. On WESAD, the selected thresholds are approximately `0.50`, not a fixed `0.80`; this means
+the data does not support aggressive abstention as a reliable safety mechanism. The demo's confidence
+state is therefore a review signal, not a clinical guarantee. Temperature scaling is implemented and
+evaluated with cross-fitted training-only predictions, but is not declared universally better because
+different calibration metrics move in different directions. See
+[`reports/SELECTIVE_AUDIT.md`](../reports/SELECTIVE_AUDIT.md) for the full audit.
 
 ## Known limitations
 

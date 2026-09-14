@@ -120,6 +120,135 @@ def probability_metrics(
     return result
 
 
+def selective_metrics(
+    y_true: np.ndarray,
+    probabilities: np.ndarray,
+    labels: list[int] | None = None,
+    threshold: float = 0.8,
+) -> dict[str, Any]:
+    """Measure confidence-based acceptance and class-level coverage."""
+
+    y_true = np.asarray(y_true)
+    probabilities = np.asarray(probabilities, dtype=np.float64)
+    if probabilities.ndim != 2 or len(y_true) != len(probabilities):
+        raise ValueError("probabilities must have shape (n_samples, n_classes)")
+    if not np.isfinite(probabilities).all() or (probabilities < 0).any():
+        raise ValueError("probabilities must be finite and non-negative")
+    if not np.allclose(probabilities.sum(axis=1), 1.0, atol=1e-5):
+        raise ValueError("probability rows must sum to one")
+    if not 0.0 < threshold <= 1.0:
+        raise ValueError("threshold must be in the interval (0, 1]")
+    if labels is None:
+        labels = list(range(probabilities.shape[1]))
+    if len(labels) != probabilities.shape[1]:
+        raise ValueError("labels must match the probability columns")
+
+    label_indexes = {int(label): index for index, label in enumerate(labels)}
+    try:
+        true_indexes = np.asarray([label_indexes[int(label)] for label in y_true])
+    except KeyError as error:
+        raise ValueError("y_true contains a label absent from labels") from error
+
+    predicted_indexes = np.argmax(probabilities, axis=1)
+    confidence = probabilities.max(axis=1)
+    correct = predicted_indexes == true_indexes
+    accepted = confidence >= threshold
+    accepted_correct = accepted & correct
+    coverage = float(accepted.mean()) if len(accepted) else 0.0
+    result: dict[str, Any] = {
+        "threshold": float(threshold),
+        "coverage": coverage,
+        "rejection_rate": 1.0 - coverage,
+        "selective_accuracy": (
+            float(correct[accepted].mean()) if accepted.any() else 0.0
+        ),
+        "accepted_support": int(accepted.sum()),
+        "correct_accepted_support": int(accepted_correct.sum()),
+        "per_class": {},
+    }
+    for label, label_index in label_indexes.items():
+        true_mask = true_indexes == label_index
+        predicted_mask = predicted_indexes == label_index
+        accepted_predicted = accepted & predicted_mask
+        result["per_class"][str(label)] = {
+            "support": int(true_mask.sum()),
+            "mean_confidence": (
+                float(confidence[true_mask].mean()) if true_mask.any() else 0.0
+            ),
+            "coverage": float(accepted[true_mask].mean()) if true_mask.any() else 0.0,
+            "correct_coverage": (
+                float(accepted_correct[true_mask].mean()) if true_mask.any() else 0.0
+            ),
+            "accepted_support": int(accepted[true_mask].sum()),
+            "accepted_precision": (
+                float(accepted_correct[accepted_predicted].mean())
+                if accepted_predicted.any()
+                else 0.0
+            ),
+            "accepted_predicted_support": int(accepted_predicted.sum()),
+        }
+    class_f1 = []
+    for class_metrics in result["per_class"].values():
+        precision = class_metrics["accepted_precision"]
+        recall = class_metrics["correct_coverage"]
+        class_f1.append(
+            2.0 * precision * recall / (precision + recall)
+            if precision + recall > 0.0
+            else 0.0
+        )
+    result["selective_macro_f1"] = float(np.mean(class_f1)) if class_f1 else 0.0
+    return result
+
+
+def fit_confidence_threshold(
+    y_true: np.ndarray,
+    probabilities: np.ndarray,
+    labels: list[int] | None = None,
+    min_coverage: float = 0.3,
+    candidate_thresholds: tuple[float, ...] | None = None,
+) -> float:
+    """Select a confidence threshold using training-only OOF predictions.
+
+    The threshold maximizes class-balanced selective F1 subject to a predefined minimum coverage.
+    The caller is responsible for generating probabilities without fitting on the corresponding
+    samples.
+    """
+
+    if not 0.0 < min_coverage <= 1.0:
+        raise ValueError("min_coverage must be in the interval (0, 1]")
+    if labels is None:
+        labels = list(range(np.asarray(probabilities).shape[1]))
+    if candidate_thresholds is None:
+        candidate_thresholds = tuple(np.linspace(0.5, 0.95, 19).tolist())
+    candidates = sorted({float(value) for value in candidate_thresholds})
+    if not candidates or candidates[0] <= 0.0 or candidates[-1] > 1.0:
+        raise ValueError("candidate_thresholds must be in the interval (0, 1]")
+
+    feasible: list[tuple[float, float, float, float]] = []
+    for threshold in candidates:
+        metrics = selective_metrics(y_true, probabilities, labels=labels, threshold=threshold)
+        if metrics["coverage"] >= min_coverage and metrics["accepted_support"] > 0:
+            minimum_class_coverage = min(
+                class_metrics["correct_coverage"]
+                for class_metrics in metrics["per_class"].values()
+            )
+            feasible.append(
+                (
+                    metrics["selective_macro_f1"],
+                    minimum_class_coverage,
+                    metrics["coverage"],
+                    threshold,
+                )
+            )
+    if not feasible:
+        return candidates[0]
+    _, _, _, selected_threshold = max(
+        feasible,
+        key=lambda item: (item[0], item[1], item[2], -item[3]),
+    )
+    return selected_threshold
+
+
 def apply_temperature(probabilities: np.ndarray, temperature: float) -> np.ndarray:
     """Apply multiclass temperature scaling to a probability matrix."""
 
