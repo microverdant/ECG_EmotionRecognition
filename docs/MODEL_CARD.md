@@ -31,6 +31,10 @@ sets, while folds are balanced by study condition where possible. The selected m
 `0.5392 +/- 0.0227` across folds. Large participant variation remains and is reported rather than
 hidden; individual Macro-F1 ranges from 0.297 to 0.751.
 
+In a separate LOSO audit, the mean participant-level Macro-F1 was `0.5194` with a bootstrap 95% CI of
+`0.4550-0.5810`; individual results ranged from `0.311` to `0.771`. This spread is a central
+deployment limitation, not noise to be omitted.
+
 ## Confidence policy
 
 Out-of-fold probabilities are audited with Brier score, Log Loss, expected calibration error, and
