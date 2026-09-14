@@ -2,12 +2,22 @@
 
 from __future__ import annotations
 
+import numpy as np
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import RobustScaler, StandardScaler
 from sklearn.svm import SVC
+
+
+class BalancedPriorLDA(LinearDiscriminantAnalysis):
+    """LDA variant that assigns equal class priors at fit time."""
+
+    def fit(self, features, labels):
+        classes = np.unique(labels)
+        self.priors = np.full(len(classes), 1.0 / len(classes))
+        return super().fit(features, labels)
 
 
 def build_logistic_regression(random_seed: int = 42) -> Pipeline:
@@ -43,6 +53,21 @@ def build_shrinkage_lda(random_seed: int = 42) -> Pipeline:
             (
                 "classifier",
                 LinearDiscriminantAnalysis(solver="lsqr", shrinkage="auto"),
+            ),
+        ]
+    )
+
+
+def build_balanced_shrinkage_lda(random_seed: int = 42) -> Pipeline:
+    """Build a shrinkage LDA with equal class priors for balanced recall."""
+
+    del random_seed
+    return Pipeline(
+        steps=[
+            ("scaler", StandardScaler()),
+            (
+                "classifier",
+                BalancedPriorLDA(solver="lsqr", shrinkage="auto"),
             ),
         ]
     )
@@ -90,6 +115,8 @@ def build_baseline(name: str, random_seed: int = 42):
         return build_logistic_regression(random_seed)
     if normalized in {"lda", "shrinkage-lda", "discriminant-analysis"}:
         return build_shrinkage_lda(random_seed)
+    if normalized in {"balanced-lda", "balanced-shrinkage-lda", "class-balanced-lda"}:
+        return build_balanced_shrinkage_lda(random_seed)
     if normalized in {"random-forest", "randomforest", "rf"}:
         return build_random_forest(random_seed)
     if normalized in {"svm", "rbf-svm", "svc"}:
