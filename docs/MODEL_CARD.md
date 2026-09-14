@@ -22,7 +22,7 @@ It is not a clinical, wellness, safety, hiring, or mental-health decision system
 - Filtered at the 700 Hz source rate, then anti-aliased resampled to 140 Hz.
 - 30-second windows, 15-second stride, and 90% label purity.
 - Each window is normalized independently; no full-recording participant statistics are used.
-- R-R intervals outside 0.30–2.00 seconds are excluded from HRV features.
+- R-R intervals outside 0.30-2.00 seconds are excluded from HRV features.
 
 ## Evaluation
 
@@ -30,6 +30,14 @@ The primary result is five-fold `StratifiedGroupKFold`: no participant occurs in
 sets, while folds are balanced by study condition where possible. The selected model reached Macro-F1
 `0.5392 +/- 0.0227` across folds. Large participant variation remains and is reported rather than
 hidden; individual Macro-F1 ranges from 0.297 to 0.751.
+
+## Confidence policy
+
+Out-of-fold probabilities are audited with Brier score, Log Loss, expected calibration error, and
+coverage at confidence thresholds. The default demo exposes confidence and marks predictions below
+0.80 as low-confidence; this is a review signal, not a clinical guarantee. Temperature scaling is
+implemented and evaluated with cross-fitted training-only predictions, but is not declared universally
+better because different calibration metrics move in different directions.
 
 ## Known limitations
 
