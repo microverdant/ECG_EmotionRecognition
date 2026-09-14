@@ -22,8 +22,10 @@ the split protocol, Macro-F1, balanced accuracy, confusion matrix, and participa
 
 The primary subject-independent benchmark uses 15 subjects, 2,140 windows, 140 Hz ECG, 30-second
 windows, and five-fold StratifiedGroupKFold evaluation. The selected feature model is a shrinkage LDA
-with `0.5392 +/- 0.0227` Macro-F1. This modest result is deliberate: the protocol prioritizes honest
-performance on unseen people over participant-specific accuracy.
+with `0.5392 +/- 0.0227` Macro-F1. A separate `balanced-shrinkage-lda` operating mode reaches
+`0.5494 +/- 0.0616` Macro-F1 and improves coverage of the Amusement class, but with lower overall
+accuracy and higher subject variation. This modest result is deliberate: the protocol prioritizes
+honest performance on unseen people over participant-specific accuracy.
 
 The compact convolutional LSTM is available as a raw-signal experiment and reached `0.5300 +/- 0.1161`
 Macro-F1 under the same protocol. It remains a secondary model because its cross-subject variation is
