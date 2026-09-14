@@ -37,7 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     cross_validation = subparsers.add_parser(
         "cross-validate-baseline",
-        help="run subject-level GroupKFold evaluation for a feature baseline",
+        help="run stratified subject-level cross-validation for a feature baseline",
     )
     cross_validation.add_argument("--data", type=Path, required=True)
     cross_validation.add_argument(

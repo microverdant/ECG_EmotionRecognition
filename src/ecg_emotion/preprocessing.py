@@ -42,13 +42,20 @@ def clean_ecg(
     signal: np.ndarray,
     sample_rate: float,
     line_frequency: float | None = 50.0,
+    normalize: bool = False,
 ) -> np.ndarray:
-    """Apply the default ECG cleaning chain."""
+    """Apply filtering and optional normalization to an ECG recording.
+
+    Normalization is opt-in because normalizing an entire participant recording
+    exposes recording-level statistics to every downstream split.  Feature
+    models scale features after their training split is selected, while neural
+    models use :func:`normalize_windows` independently for each window.
+    """
 
     cleaned = bandpass_filter(signal, sample_rate)
     if line_frequency is not None:
         cleaned = notch_filter(cleaned, sample_rate, line_frequency)
-    return zscore(cleaned)
+    return zscore(cleaned) if normalize else cleaned.astype(np.float32)
 
 
 def zscore(signal: np.ndarray, eps: float = 1e-8) -> np.ndarray:
