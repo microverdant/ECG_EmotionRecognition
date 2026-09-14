@@ -23,6 +23,17 @@ def build_tiny_cnn(num_classes: int = 4):
     return TinyCNN1D(num_classes=num_classes)
 
 
+def build_tiny_lstm(num_classes: int = 4):
+    """Build a compact convolutional-recurrent model for ECG windows."""
+
+    if torch is None:
+        raise RuntimeError(
+            "PyTorch is not installed. Install the optional dependency with "
+            '`pip install -e "[deep-learning]"`'
+        )
+    return TinyLSTM1D(num_classes=num_classes)
+
+
 if torch is not None:
 
     class StatisticsPooling(torch.nn.Module):
@@ -65,8 +76,45 @@ if torch is not None:
         def forward(self, inputs):
             return self.classifier(self.pool(self.encoder(inputs)))
 
+    class TinyLSTM1D(torch.nn.Module):
+        """Compact convolutional-recurrent classifier for fixed ECG windows."""
+
+        def __init__(self, num_classes: int = 4) -> None:
+            super().__init__()
+            self.frontend = torch.nn.Sequential(
+                torch.nn.Conv1d(1, 16, kernel_size=15, stride=4, padding=7, bias=False),
+                torch.nn.GroupNorm(4, 16),
+                torch.nn.SiLU(),
+                torch.nn.Conv1d(16, 32, kernel_size=9, stride=4, padding=4, bias=False),
+                torch.nn.GroupNorm(8, 32),
+                torch.nn.SiLU(),
+            )
+            self.recurrent = torch.nn.LSTM(
+                input_size=32,
+                hidden_size=32,
+                num_layers=1,
+                batch_first=True,
+                bidirectional=True,
+            )
+            self.classifier = torch.nn.Sequential(
+                torch.nn.Linear(64, 32),
+                torch.nn.SiLU(),
+                torch.nn.Dropout(p=0.2),
+                torch.nn.Linear(32, num_classes),
+            )
+
+        def forward(self, inputs):
+            sequence = self.frontend(inputs).transpose(1, 2)
+            recurrent_outputs, _ = self.recurrent(sequence)
+            pooled = recurrent_outputs.mean(dim=1)
+            return self.classifier(pooled)
+
 else:
 
     class TinyCNN1D:  # pragma: no cover - only used to provide a clear error
         def __init__(self, *args, **kwargs) -> None:
             raise RuntimeError("Install the optional deep-learning dependency to use TinyCNN1D")
+
+    class TinyLSTM1D:  # pragma: no cover - only used to provide a clear error
+        def __init__(self, *args, **kwargs) -> None:
+            raise RuntimeError("Install the optional deep-learning dependency to use TinyLSTM1D")

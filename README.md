@@ -8,7 +8,7 @@
 
 This independent, clean-room implementation focuses on methodological clarity, CPU-friendly
 experimentation, and reproducible evaluation. It includes signal processing, interpretable feature
-baselines, an optional compact 1D-CNN, tests, and a local inference demo.
+baselines, optional compact 1D-CNN and convolutional LSTM models, tests, and a local inference demo.
 
 ## Research question
 
@@ -22,8 +22,12 @@ the split protocol, Macro-F1, balanced accuracy, confusion matrix, and participa
 
 The primary subject-independent benchmark uses 15 subjects, 2,140 windows, 140 Hz ECG, 30-second
 windows, and five-fold StratifiedGroupKFold evaluation. The selected feature model is a shrinkage LDA
-with `0.5392 ± 0.0227` Macro-F1. This modest result is deliberate: the protocol prioritizes honest
+with `0.5392 +/- 0.0227` Macro-F1. This modest result is deliberate: the protocol prioritizes honest
 performance on unseen people over participant-specific accuracy.
+
+The compact convolutional LSTM is available as a raw-signal experiment and reached `0.5300 +/- 0.1161`
+Macro-F1 under the same protocol. It remains a secondary model because its cross-subject variation is
+higher than shrinkage LDA.
 
 See [`reports/BENCHMARK.md`](reports/BENCHMARK.md) for the full protocol, results, reproduction
 commands, and limitations. See [`docs/MODEL_CARD.md`](docs/MODEL_CARD.md) for intended use and known
@@ -60,13 +64,18 @@ python -m ecg_emotion.cli train-baseline `
   --sample-rate 128
 ```
 
-The baseline command writes a serialized model and `metrics.json`. To run the optional neural model:
+The baseline command writes a serialized model and `metrics.json`. To run the optional CNN or LSTM:
 
 ```powershell
 python -m pip install -e ".[deep-learning]"
 python -m ecg_emotion.cli train-tiny-cnn `
   --data data/demo_ecg.npz `
   --output artifacts/tiny-cnn `
+  --sample-rate 128
+
+python -m ecg_emotion.cli train-tiny-lstm `
+  --data data/demo_ecg.npz `
+  --output artifacts/tiny-lstm `
   --sample-rate 128
 ```
 
@@ -85,11 +94,11 @@ metrics must not be presented as research results.
 - [x] Establish a modern Python project and data contract.
 - [x] Implement filtering, windowing, and subject-level splits.
 - [x] Add fast feature-based baselines.
-- [x] Add a compact 1D-CNN training path.
+- [x] Add compact 1D-CNN and convolutional LSTM training paths.
 - [x] Add evaluation artifacts and reproducibility checks.
 - [x] Add a local Streamlit inference demo.
 - [x] Evaluate the official prepared dataset with grouped subject-level baselines.
-- [x] Add grouped cross-validation for Tiny CNN v2.
+- [x] Add grouped cross-validation for Tiny CNN v2 and Tiny LSTM v1.
 - [ ] Add confidence calibration and subject-domain robustness experiments.
 
 ## License
