@@ -94,6 +94,20 @@ python -m pip install -e ".[demo]"
 streamlit run demo/app.py
 ```
 
+The sidebar can switch between the conservative empirical-prior bundle and the class-balanced bundle.
+To prepare the latter locally, run:
+
+```powershell
+python -m ecg_emotion.cli train-baseline `
+  --data data\processed\wesad_core_140hz_30s_robust.npz `
+  --output artifacts\demo-balanced-lda `
+  --model balanced-shrinkage-lda `
+  --sample-rate 140
+```
+
+The interface shows the bundle's training-derived threshold, class probabilities, and explicit accept /
+abstain state. Model bundles and WESAD data remain local and ignored by Git.
+
 The bundled synthetic data is for smoke testing only. It is not a physiological dataset and its
 metrics must not be presented as research results.
 
