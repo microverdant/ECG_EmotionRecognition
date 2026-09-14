@@ -41,6 +41,9 @@ to support aggressive rejection.
 
 The participant-domain analysis is available in [`reports/ROBUSTNESS.md`](reports/ROBUSTNESS.md).
 
+The complete reproducibility workflow is documented in [`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md),
+and resume-ready project bullets are available in [`docs/RESUME_BULLETS.md`](docs/RESUME_BULLETS.md).
+
 ## Data policy
 
 Raw participant data is not included in this repository. Users must obtain data through its official
@@ -110,6 +113,25 @@ abstain state. Model bundles and WESAD data remain local and ignored by Git.
 
 The bundled synthetic data is for smoke testing only. It is not a physiological dataset and its
 metrics must not be presented as research results.
+
+## Formal experiment suite
+
+Once the official WESAD data has been prepared locally, one command runs grouped cross-validation,
+LOSO robustness, leakage-safe selective prediction, and local demo-bundle training for both feature
+operating modes:
+
+```powershell
+python scripts/run_experiment_suite.py `
+  --data data\processed\wesad_core_140hz_30s_robust.npz `
+  --output artifacts\wesad-suite `
+  --models shrinkage-lda balanced-shrinkage-lda `
+  --sample-rate 140 `
+  --seed 42
+```
+
+All generated outputs go under `artifacts/`, which is ignored by Git. See
+[`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md) for raw-data preparation and the full experiment
+contract.
 
 ## Roadmap
 
