@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import joblib
 import numpy as np
 
 from ecg_emotion.synthetic import generate_demo_dataset
@@ -28,6 +29,9 @@ def test_feature_baseline_saves_reproducible_artifacts(tmp_path: Path) -> None:
     assert (output_dir / "metrics.json").exists()
     assert result["split_subjects"]["train"]
     assert 0.0 <= result["metrics"]["test"]["macro_f1"] <= 1.0
+    bundle = joblib.load(output_dir / "model.joblib")
+    assert 0.0 < bundle["confidence_threshold"] <= 1.0
+    assert bundle["confidence_threshold_selection"]["training_only"] is True
 
 
 def test_wesad_adapter_maps_supported_labels(tmp_path: Path) -> None:
