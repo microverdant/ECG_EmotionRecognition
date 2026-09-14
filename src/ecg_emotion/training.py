@@ -8,7 +8,7 @@ from typing import Any
 
 import joblib
 import numpy as np
-from sklearn.model_selection import GroupKFold
+from sklearn.model_selection import StratifiedGroupKFold
 
 from .data import load_npz, split_by_subject
 from .evaluation import classification_metrics, save_json
@@ -85,7 +85,7 @@ def cross_validate_feature_baseline(
     num_folds: int = 5,
     random_seed: int = 42,
 ) -> dict[str, Any]:
-    """Run deterministic subject-level GroupKFold evaluation with cached features."""
+    """Run deterministic, label-balanced subject-level cross-validation."""
 
     started = time.perf_counter()
     dataset = load_npz(data_path)
@@ -94,8 +94,13 @@ def cross_validate_feature_baseline(
 
     feature_matrix = extract_features(dataset.signals, sample_rate=sample_rate)
     labels = sorted(np.unique(dataset.labels).astype(int).tolist())
-    splitter = GroupKFold(n_splits=num_folds)
+    splitter = StratifiedGroupKFold(
+        n_splits=num_folds,
+        shuffle=True,
+        random_state=random_seed,
+    )
     fold_results: list[dict[str, Any]] = []
+    subject_results: list[dict[str, Any]] = []
     for fold_index, (train_indexes, test_indexes) in enumerate(
         splitter.split(feature_matrix, dataset.labels, groups=dataset.subjects),
         start=1,
@@ -119,6 +124,20 @@ def cross_validate_feature_baseline(
                 ),
             }
         )
+        for subject in sorted({str(value) for value in dataset.subjects[test_indexes]}):
+            subject_indexes = test_indexes[dataset.subjects[test_indexes] == subject]
+            subject_predictions = model.predict(feature_matrix[subject_indexes])
+            subject_results.append(
+                {
+                    "fold": fold_index,
+                    "subject": subject,
+                    "metrics": classification_metrics(
+                        dataset.labels[subject_indexes],
+                        subject_predictions,
+                        labels=labels,
+                    ),
+                }
+            )
 
     scalar_metrics = (
         "accuracy",
@@ -140,9 +159,11 @@ def cross_validate_feature_baseline(
         "num_samples": dataset.num_samples,
         "num_subjects": dataset.num_subjects,
         "num_folds": num_folds,
+        "split_strategy": "StratifiedGroupKFold",
         "sample_rate": sample_rate,
         "feature_names": list(FEATURE_NAMES),
         "folds": fold_results,
+        "per_subject": subject_results,
         "aggregate": aggregate,
         "evaluation_seconds": round(time.perf_counter() - started, 4),
     }
