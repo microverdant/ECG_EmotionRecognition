@@ -89,7 +89,7 @@ metrics must not be presented as research results.
 - [x] Add evaluation artifacts and reproducibility checks.
 - [x] Add a local Streamlit inference demo.
 - [x] Evaluate the official prepared dataset with grouped subject-level baselines.
-- [ ] Add grouped cross-validation for Tiny CNN v2.
+- [x] Add grouped cross-validation for Tiny CNN v2.
 - [ ] Add confidence calibration and subject-domain robustness experiments.
 
 ## License

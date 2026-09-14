@@ -35,7 +35,8 @@ hidden; individual Macro-F1 ranges from 0.046 to 0.848.
 - HRV frequency-domain estimates from 30-second windows are approximate.
 - Results are sensitive to participant domain shift; performance should not be assumed to transfer to
   a new device, protocol, population, or free-living setting.
-- The compact CNN is exploratory until it receives the same grouped cross-validation protocol.
+- The compact CNN has now received the same grouped cross-validation protocol, but its Macro-F1
+  (`0.4913 ± 0.0370`) is below the selected Logistic Regression baseline.
 
 ## Reproducibility and privacy
 
