@@ -74,6 +74,9 @@ an improvement to overall model accuracy, and the threshold must be revalidated 
 - Participant-level Macro-F1 for Shrinkage LDA ranges from 0.297 to 0.751. This is evidence of
   unresolved domain shift, so only the fold mean and spread should be cited.
 
+See [`reports/ROBUSTNESS.md`](ROBUSTNESS.md) for the LOSO audit, feature ablations, and bootstrap
+confidence intervals.
+
 ## Reproduction
 
 ```powershell

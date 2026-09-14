@@ -100,6 +100,21 @@ def build_parser() -> argparse.ArgumentParser:
     lstm_cross_validation.add_argument("--folds", type=int, default=5)
     lstm_cross_validation.add_argument("--disable-augmentation", action="store_true")
     lstm_cross_validation.add_argument("--seed", type=int, default=42)
+
+    robustness = subparsers.add_parser(
+        "audit-subject-robustness",
+        help="run leave-one-subject-out and feature ablation analysis",
+    )
+    robustness.add_argument("--data", type=Path, required=True)
+    robustness.add_argument(
+        "--output",
+        type=Path,
+        default=Path("artifacts/subject-robustness"),
+    )
+    robustness.add_argument("--model", default="shrinkage-lda")
+    robustness.add_argument("--sample-rate", type=float, default=256.0)
+    robustness.add_argument("--bootstrap-samples", type=int, default=2000)
+    robustness.add_argument("--seed", type=int, default=42)
     return parser
 
 
@@ -229,6 +244,25 @@ def main() -> None:
         print(
             f"{result['model_name']} {result['num_folds']}-fold macro_f1="
             f"{macro_f1['mean']:.4f} +/- {macro_f1['std']:.4f}"
+        )
+        return
+
+    if args.command == "audit-subject-robustness":
+        from .robustness import run_loso_audit
+
+        result = run_loso_audit(
+            data_path=args.data,
+            output_dir=args.output,
+            model_name=args.model,
+            sample_rate=args.sample_rate,
+            bootstrap_samples=args.bootstrap_samples,
+            random_seed=args.seed,
+        )
+        primary = result["feature_sets"]["all_features"]["aggregate"]["macro_f1"]
+        print(
+            f"{result['model_name']} LOSO macro_f1={primary['mean']:.4f} "
+            f"95% CI=({primary['bootstrap_95ci'][0]:.4f}, "
+            f"{primary['bootstrap_95ci'][1]:.4f})"
         )
 
 
