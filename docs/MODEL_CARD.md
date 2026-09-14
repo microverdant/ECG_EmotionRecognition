@@ -1,12 +1,18 @@
 # Model Card: Subject-Independent ECG Emotion Recognition
 
-## Selected model
+## Selected model and operating modes
 
 The formal feature model is a shrinkage Linear Discriminant Analysis (LDA) over 22 window-level ECG
 morphology and HRV features. It uses standardized inputs and automatic covariance shrinkage, which is
-appropriate when the number of participants is small relative to the feature dimension. It is selected
-over Random Forest, RBF-SVM, Logistic Regression, and the neural models based on subject-independent
-cross-validation.
+appropriate when the number of participants is small relative to the feature dimension. The repository
+exposes two explicit decision-prior modes:
+
+- `shrinkage-lda` uses empirical class priors and is the conservative benchmark mode.
+- `balanced-shrinkage-lda` uses equal class priors and is the recommended showcase mode when recall
+  coverage across all three classes matters more than overall accuracy.
+
+The balanced mode is a decision-rule variant, not a claim that the underlying ECG representation is
+universally stronger. Both modes are retained so the accuracy/coverage trade-off remains inspectable.
 
 ## Intended use
 
@@ -31,9 +37,11 @@ sets, while folds are balanced by study condition where possible. The selected m
 `0.5392 +/- 0.0227` across folds. Large participant variation remains and is reported rather than
 hidden; individual Macro-F1 ranges from 0.297 to 0.751.
 
-In a separate LOSO audit, the mean participant-level Macro-F1 was `0.5194` with a bootstrap 95% CI of
-`0.4550-0.5810`; individual results ranged from `0.311` to `0.771`. This spread is a central
-deployment limitation, not noise to be omitted.
+In a separate LOSO audit, the empirical-prior mode reached mean participant-level Macro-F1 `0.5194`
+with a bootstrap 95% CI of `0.4550-0.5810`; individual results ranged from `0.311` to `0.771`. The
+equal-prior mode reached Macro-F1 `0.5138` with a bootstrap 95% CI of `0.4172-0.6150`, while improving
+Amusement recall from `0.1326` to `0.4065` and balanced accuracy from `0.5547` to `0.5658`. This
+trade-off and the wider subject variation are central deployment limitations, not noise to be omitted.
 
 ## Confidence policy
 
@@ -47,6 +55,8 @@ better because different calibration metrics move in different directions.
 
 - The controlled study labels are not diagnoses or a general definition of emotion.
 - HRV frequency-domain estimates from 30-second windows are approximate.
+- Class imbalance strongly affects the decision rule: empirical priors favor Baseline, while equal
+  priors improve Amusement coverage but increase false Amusement predictions.
 - Results are sensitive to participant domain shift; performance should not be assumed to transfer to
   a new device, protocol, population, or free-living setting.
 - The compact CNN and convolutional LSTM have received the same grouped cross-validation protocol.

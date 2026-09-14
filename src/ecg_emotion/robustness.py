@@ -167,6 +167,54 @@ def _aggregate_subject_metrics(
         }
         for metric in confidence_metrics
     }
+    labels = subject_results[0]["metrics"]["labels"]
+    aggregate["per_class"] = {
+        str(label): {
+            metric: {
+                "mean": float(
+                    np.mean(
+                        [
+                            result["metrics"]["per_class"][str(label)][metric]
+                            for result in subject_results
+                        ]
+                    )
+                ),
+                "std": float(
+                    np.std(
+                        [
+                            result["metrics"]["per_class"][str(label)][metric]
+                            for result in subject_results
+                        ]
+                    )
+                ),
+                "bootstrap_95ci": list(
+                    _bootstrap_mean_ci(
+                        np.asarray(
+                            [
+                                result["metrics"]["per_class"][str(label)][metric]
+                                for result in subject_results
+                            ]
+                        ),
+                        bootstrap_samples,
+                        random_seed,
+                    )
+                ),
+            }
+            for metric in ("precision", "recall", "f1-score")
+        }
+        for label in labels
+    }
+    pooled_confusion = np.sum(
+        [result["metrics"]["confusion_matrix"] for result in subject_results], axis=0
+    ).astype(int)
+    row_totals = pooled_confusion.sum(axis=1, keepdims=True)
+    aggregate["pooled_confusion_matrix"] = pooled_confusion.tolist()
+    aggregate["row_normalized_confusion_matrix"] = np.divide(
+        pooled_confusion,
+        row_totals,
+        out=np.zeros_like(pooled_confusion, dtype=np.float64),
+        where=row_totals != 0,
+    ).tolist()
     aggregate["mean_train_macro_f1"] = float(
         np.mean([result["train_metrics"]["macro_f1"] for result in subject_results])
     )

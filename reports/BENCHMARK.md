@@ -23,6 +23,7 @@ Values are the mean +/- population standard deviation across five subject-held-o
 | Model | Accuracy | Balanced accuracy | Macro-F1 | Assessment |
 |---|---:|---:|---:|---|
 | Shrinkage LDA | 0.6713 +/- 0.0399 | 0.5496 +/- 0.0283 | **0.5392 +/- 0.0227** | Selected, low-variance model |
+| Balanced Shrinkage LDA | 0.5954 +/- 0.0774 | **0.5705 +/- 0.0577** | 0.5494 +/- 0.0616 | Class-balanced operating mode |
 | Logistic Regression | 0.5581 +/- 0.1064 | 0.5422 +/- 0.1009 | 0.5192 +/- 0.1011 | Linear comparison |
 | Random Forest | 0.6021 +/- 0.1007 | 0.5089 +/- 0.0635 | 0.4758 +/- 0.0767 | Reject: train Macro-F1 0.997 |
 | RBF-SVM | 0.5832 +/- 0.0492 | 0.5322 +/- 0.0496 | 0.5156 +/- 0.0601 | Reject: train Macro-F1 0.888 |
@@ -46,9 +47,11 @@ validation protocol:
 | Tiny LSTM v1 | 0.5926 +/- 0.1155 | 0.5766 +/- 0.0630 | 0.5300 +/- 0.1161 | Secondary model, higher variance |
 
 The feature results are not strong enough to claim broad emotion recognition. They are a realistic
-subject-independent baseline. Shrinkage LDA is selected because it provides the highest mean Macro-F1
-and the lowest fold variation among the candidates. On the locked holdout it reached Macro-F1 0.5201,
-with train/validation/test Macro-F1 of 0.6519/0.5494/0.5201.
+subject-independent baseline. Empirical-prior Shrinkage LDA remains the formal benchmark because it
+has the lowest fold variation among the candidates. The balanced-prior variant is included because it
+improves class-balanced metrics and minority-class coverage, but it has higher variation and should not
+be described as a universal replacement. On the locked empirical-prior holdout, Shrinkage LDA reached
+Macro-F1 0.5201, with train/validation/test Macro-F1 of 0.6519/0.5494/0.5201.
 
 ## Confidence and abstention
 
@@ -74,8 +77,8 @@ an improvement to overall model accuracy, and the threshold must be revalidated 
 - Participant-level Macro-F1 for Shrinkage LDA ranges from 0.297 to 0.751. This is evidence of
   unresolved domain shift, so only the fold mean and spread should be cited.
 
-See [`reports/ROBUSTNESS.md`](ROBUSTNESS.md) for the LOSO audit, feature ablations, and bootstrap
-confidence intervals.
+See [`reports/ROBUSTNESS.md`](ROBUSTNESS.md) for the LOSO audit, feature ablations, class-level
+confusion matrices, and bootstrap confidence intervals for both decision-prior modes.
 
 ## Reproduction
 
