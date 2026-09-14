@@ -99,7 +99,8 @@ metrics must not be presented as research results.
 - [x] Add a local Streamlit inference demo.
 - [x] Evaluate the official prepared dataset with grouped subject-level baselines.
 - [x] Add grouped cross-validation for Tiny CNN v2 and Tiny LSTM v1.
-- [ ] Add confidence calibration and subject-domain robustness experiments.
+- [x] Add confidence diagnostics and leakage-safe calibration audit.
+- [ ] Validate calibration and confidence thresholds on larger, more diverse cohorts.
 
 ## License
 

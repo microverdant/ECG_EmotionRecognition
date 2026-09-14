@@ -11,7 +11,6 @@ import streamlit as st
 
 from ecg_emotion.inference import load_baseline, predict_baseline
 
-
 st.set_page_config(page_title="ECG Emotion Recognition", page_icon="❤️", layout="wide")
 st.title("ECG Emotion Recognition")
 st.caption("A local research demo for a lightweight feature-based baseline.")
@@ -41,7 +40,13 @@ if model_path.exists():
     bundle = load_baseline(model_path)
     result = predict_baseline(bundle, signal)
     st.subheader(f"Predicted class: {result['label']}")
+    st.metric("Model confidence", f"{result['confidence']:.1%}")
+    if not result["accepted"]:
+        threshold = result["confidence_threshold"]
+        st.warning(
+            "Low-confidence prediction; consider abstaining below the "
+            f"{threshold:.0%} threshold."
+        )
     st.bar_chart(result["probabilities"])
 else:
     st.info("Train a baseline first, then point the sidebar to its model.joblib file.")
-
