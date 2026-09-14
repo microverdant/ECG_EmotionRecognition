@@ -11,7 +11,13 @@ import numpy as np
 from sklearn.model_selection import StratifiedGroupKFold
 
 from .data import load_npz, split_by_subject
-from .evaluation import classification_metrics, save_json
+from .evaluation import (
+    apply_temperature,
+    classification_metrics,
+    fit_temperature,
+    probability_metrics,
+    save_json,
+)
 from .features import FEATURE_NAMES, extract_features
 from .models import build_baseline
 
@@ -60,6 +66,7 @@ def train_feature_baseline(
         "sample_rate": sample_rate,
         "feature_names": FEATURE_NAMES,
         "labels": labels,
+        "confidence_threshold": 0.8,
     }
     joblib.dump(bundle, output_dir / "model.joblib")
     result = {
@@ -101,6 +108,7 @@ def cross_validate_feature_baseline(
     )
     fold_results: list[dict[str, Any]] = []
     subject_results: list[dict[str, Any]] = []
+    confidence_results: list[dict[str, Any]] = []
     for fold_index, (train_indexes, test_indexes) in enumerate(
         splitter.split(feature_matrix, dataset.labels, groups=dataset.subjects),
         start=1,
@@ -108,6 +116,21 @@ def cross_validate_feature_baseline(
         model = build_baseline(model_name, random_seed=random_seed + fold_index)
         model.fit(feature_matrix[train_indexes], dataset.labels[train_indexes])
         predictions = model.predict(feature_matrix[test_indexes])
+        probabilities = model.predict_proba(feature_matrix[test_indexes])
+        calibration_labels, calibration_probabilities = _cross_fitted_calibration_data(
+            feature_matrix,
+            dataset.labels,
+            dataset.subjects,
+            train_indexes,
+            model_name,
+            random_seed + fold_index,
+        )
+        temperature = fit_temperature(
+            calibration_labels,
+            calibration_probabilities,
+            labels=labels,
+        )
+        calibrated_probabilities = apply_temperature(probabilities, temperature)
         fold_results.append(
             {
                 "fold": fold_index,
@@ -117,11 +140,28 @@ def cross_validate_feature_baseline(
                 "test_subjects": sorted(
                     {str(subject) for subject in dataset.subjects[test_indexes]}
                 ),
+                "calibration_subjects": sorted(
+                    {str(subject) for subject in dataset.subjects[train_indexes]}
+                ),
+                "calibration_strategy": "3-fold cross-fitted OOF probabilities",
                 "metrics": classification_metrics(
                     dataset.labels[test_indexes],
                     predictions,
                     labels=labels,
                 ),
+                "confidence": probability_metrics(
+                    dataset.labels[test_indexes], probabilities, labels=labels
+                ),
+                "calibrated_confidence": probability_metrics(
+                    dataset.labels[test_indexes], calibrated_probabilities, labels=labels
+                ),
+                "temperature": temperature,
+            }
+        )
+        confidence_results.append(
+            {
+                "raw": fold_results[-1]["confidence"],
+                "calibrated": fold_results[-1]["calibrated_confidence"],
             }
         )
         for subject in sorted({str(value) for value in dataset.subjects[test_indexes]}):
@@ -153,6 +193,14 @@ def cross_validate_feature_baseline(
         }
         for metric in scalar_metrics
     }
+    confidence_aggregate = {
+        "raw": _aggregate_probability_metrics(
+            [result["raw"] for result in confidence_results]
+        ),
+        "calibrated": _aggregate_probability_metrics(
+            [result["calibrated"] for result in confidence_results]
+        ),
+    }
     result = {
         "model_name": model_name,
         "data_path": str(Path(data_path)),
@@ -165,8 +213,49 @@ def cross_validate_feature_baseline(
         "folds": fold_results,
         "per_subject": subject_results,
         "aggregate": aggregate,
+        "confidence_aggregate": confidence_aggregate,
         "evaluation_seconds": round(time.perf_counter() - started, 4),
     }
     output_dir = Path(output_dir)
     save_json(result, output_dir / "cross_validation.json")
     return result
+
+
+def _cross_fitted_calibration_data(
+    feature_matrix: np.ndarray,
+    labels_array: np.ndarray,
+    subjects: np.ndarray,
+    indexes: np.ndarray,
+    model_name: str,
+    random_seed: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Generate training-only OOF probabilities for leakage-safe calibration."""
+
+    splitter = StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=random_seed)
+    probabilities: list[np.ndarray] = []
+    true_labels: list[np.ndarray] = []
+    local_features = feature_matrix[indexes]
+    local_labels = labels_array[indexes]
+    local_subjects = subjects[indexes]
+    for inner_fold, (inner_train, inner_validation) in enumerate(
+        splitter.split(local_features, local_labels, groups=local_subjects),
+        start=1,
+    ):
+        model = build_baseline(model_name, random_seed=random_seed + inner_fold)
+        model.fit(local_features[inner_train], local_labels[inner_train])
+        probabilities.append(model.predict_proba(local_features[inner_validation]))
+        true_labels.append(local_labels[inner_validation])
+    return np.concatenate(true_labels), np.vstack(probabilities)
+
+
+def _aggregate_probability_metrics(results: list[dict[str, float]]) -> dict[str, dict[str, float]]:
+    """Aggregate scalar probability metrics across outer folds."""
+
+    keys = results[0].keys()
+    return {
+        key: {
+            "mean": float(np.mean([result[key] for result in results])),
+            "std": float(np.std([result[key] for result in results])),
+        }
+        for key in keys
+    }

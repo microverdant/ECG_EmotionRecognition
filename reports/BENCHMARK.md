@@ -50,6 +50,21 @@ subject-independent baseline. Shrinkage LDA is selected because it provides the 
 and the lowest fold variation among the candidates. On the locked holdout it reached Macro-F1 0.5201,
 with train/validation/test Macro-F1 of 0.6519/0.5494/0.5201.
 
+## Confidence and abstention
+
+The selected model's out-of-fold probabilities have raw mean confidence 0.7748 +/- 0.0460 versus
+accuracy 0.6713 +/- 0.0399. Raw Brier score is 0.4783 +/- 0.0256, Log Loss is 0.9266 +/- 0.0673, and
+expected calibration error is 0.1198 +/- 0.0283.
+
+Temperature scaling is fitted only from three-fold cross-fitted training-subject predictions. It
+reduces Log Loss to 0.8308 +/- 0.0366, but Brier score and expected calibration error do not improve
+at the same time. It is therefore retained as an auditable experiment rather than silently used as the
+default probability output.
+
+Raw confidence can support selective review: a threshold of 0.80 accepts 51.2% of windows at 78.1%
+accuracy, while a threshold of 0.90 accepts 24.6% at 82.3% accuracy. These are selective metrics, not
+an improvement to overall model accuracy, and the threshold must be revalidated for a new population.
+
 ## Robustness checks
 
 - No zero R-peak windows, non-finite values, or mean heart rates outside 30-200 bpm occurred in the
