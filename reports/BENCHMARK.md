@@ -26,6 +26,17 @@ Values are the mean ± population standard deviation across five subject-held-ou
 | Random Forest | 0.6021 ± 0.1007 | 0.5089 ± 0.0635 | 0.4758 ± 0.0767 | Reject: train Macro-F1 0.997 |
 | RBF-SVM | 0.5832 ± 0.0492 | 0.5322 ± 0.0496 | 0.5156 ± 0.0601 | Reject: train Macro-F1 0.888 |
 
+The compact Tiny CNN was evaluated under the same outer subject protocol, with an inner
+participant-level validation split for early stopping:
+
+| Model | Accuracy | Balanced accuracy | Macro-F1 | Assessment |
+|---|---:|---:|---:|---|
+| Tiny CNN v2 | 0.5819 ± 0.1045 | 0.5293 ± 0.0418 | 0.4913 ± 0.0370 | Robust secondary model, not selected |
+
+The CNN is more consistent across outer folds but does not outperform the feature baseline. This
+supports retaining Logistic Regression as the primary model and the CNN as a reproducible raw-signal
+comparison.
+
 The feature results are not strong enough to claim broad emotion recognition. They are a realistic
 subject-independent baseline. Logistic Regression is selected because it has a much smaller
 train-to-validation gap (0.748 to 0.589 Macro-F1) than the nonlinear alternatives, and its feature
@@ -62,6 +73,17 @@ python -m ecg_emotion.cli cross-validate-baseline `
   --seed 42
 ```
 
-The optional Tiny CNN is not included in the formal benchmark because it has only been evaluated on a
-single locked subject split. Raw WESAD files, prepared windows, fitted models, and participant-level
-artifacts are not committed.
+To reproduce the CNN comparison:
+
+```powershell
+python -m ecg_emotion.cli cross-validate-tiny-cnn `
+  --data data\processed\wesad_core_140hz_30s_robust.npz `
+  --output artifacts\wesad-core-tiny-cnn-cv `
+  --sample-rate 140 `
+  --epochs 20 `
+  --patience 5 `
+  --folds 5 `
+  --seed 42
+```
+
+Raw WESAD files, prepared windows, fitted models, and participant-level artifacts are not committed.
