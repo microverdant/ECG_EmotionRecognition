@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from ecg_emotion.robustness import run_loso_audit
+from ecg_emotion.robustness import run_loso_audit, run_loso_selective_audit
 from ecg_emotion.synthetic import generate_demo_dataset
 
 
@@ -37,3 +37,29 @@ def test_loso_audit_reports_ablation_and_bootstrap_ci(tmp_path: Path) -> None:
     assert len(aggregate["pooled_confusion_matrix"]) == 4
     assert len(aggregate["row_normalized_confusion_matrix"]) == 4
     assert (output_dir / "loso_robustness.json").exists()
+
+
+def test_selective_audit_uses_training_only_thresholds(tmp_path: Path) -> None:
+    dataset_path = tmp_path / "demo.npz"
+    output_dir = tmp_path / "selective"
+    generate_demo_dataset(
+        dataset_path,
+        sample_rate=64,
+        seconds=4,
+        num_subjects=5,
+        windows_per_subject=4,
+        random_seed=7,
+    )
+    result = run_loso_selective_audit(
+        dataset_path,
+        output_dir,
+        sample_rate=64,
+        min_coverage=0.3,
+        inner_folds=2,
+        random_seed=7,
+    )
+
+    assert result["threshold_selection"]["training_only"] is True
+    assert len(result["subjects"]) == 5
+    assert 0.0 <= result["aggregate"]["coverage"]["mean"] <= 1.0
+    assert (output_dir / "selective_audit.json").exists()

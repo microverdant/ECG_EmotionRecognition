@@ -2,8 +2,10 @@ import numpy as np
 
 from ecg_emotion.evaluation import (
     apply_temperature,
+    fit_confidence_threshold,
     fit_temperature,
     probability_metrics,
+    selective_metrics,
 )
 
 
@@ -25,3 +27,26 @@ def test_probability_metrics_and_temperature_scaling_are_finite() -> None:
     assert temperature > 0.0
     assert np.isfinite(calibrated).all()
     assert np.allclose(calibrated.sum(axis=1), 1.0)
+
+
+def test_selective_metrics_and_threshold_fit_are_finite() -> None:
+    labels = np.array([0, 1, 2, 1])
+    probabilities = np.array(
+        [
+            [0.8, 0.1, 0.1],
+            [0.2, 0.7, 0.1],
+            [0.1, 0.1, 0.8],
+            [0.4, 0.5, 0.1],
+        ]
+    )
+    threshold = fit_confidence_threshold(
+        labels,
+        probabilities,
+        min_coverage=0.5,
+    )
+    metrics = selective_metrics(labels, probabilities, threshold=threshold)
+
+    assert 0.5 <= threshold <= 0.95
+    assert 0.0 <= metrics["coverage"] <= 1.0
+    assert 0.0 <= metrics["selective_macro_f1"] <= 1.0
+    assert set(metrics["per_class"]) == {"0", "1", "2"}
