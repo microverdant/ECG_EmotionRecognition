@@ -49,6 +49,25 @@ def build_parser() -> argparse.ArgumentParser:
     cross_validation.add_argument("--sample-rate", type=float, default=256.0)
     cross_validation.add_argument("--folds", type=int, default=5)
     cross_validation.add_argument("--seed", type=int, default=42)
+
+    cnn_cross_validation = subparsers.add_parser(
+        "cross-validate-tiny-cnn",
+        help="run subject-independent cross-validation for the optional Tiny CNN",
+    )
+    cnn_cross_validation.add_argument("--data", type=Path, required=True)
+    cnn_cross_validation.add_argument(
+        "--output",
+        type=Path,
+        default=Path("artifacts/tiny-cnn-cross-validation"),
+    )
+    cnn_cross_validation.add_argument("--sample-rate", type=float, default=256.0)
+    cnn_cross_validation.add_argument("--batch-size", type=int, default=128)
+    cnn_cross_validation.add_argument("--epochs", type=int, default=30)
+    cnn_cross_validation.add_argument("--patience", type=int, default=6)
+    cnn_cross_validation.add_argument("--learning-rate", type=float, default=5e-4)
+    cnn_cross_validation.add_argument("--folds", type=int, default=5)
+    cnn_cross_validation.add_argument("--disable-augmentation", action="store_true")
+    cnn_cross_validation.add_argument("--seed", type=int, default=42)
     return parser
 
 
@@ -107,6 +126,28 @@ def main() -> None:
             sample_rate=args.sample_rate,
             num_folds=args.folds,
             random_seed=args.seed,
+        )
+        macro_f1 = result["aggregate"]["macro_f1"]
+        print(
+            f"{result['model_name']} {result['num_folds']}-fold macro_f1="
+            f"{macro_f1['mean']:.4f} +/- {macro_f1['std']:.4f}"
+        )
+        return
+
+    if args.command == "cross-validate-tiny-cnn":
+        from .torch_training import cross_validate_tiny_cnn
+
+        result = cross_validate_tiny_cnn(
+            data_path=args.data,
+            output_dir=args.output,
+            sample_rate=args.sample_rate,
+            batch_size=args.batch_size,
+            max_epochs=args.epochs,
+            early_stopping_patience=args.patience,
+            learning_rate=args.learning_rate,
+            num_folds=args.folds,
+            random_seed=args.seed,
+            use_augmentation=not args.disable_augmentation,
         )
         macro_f1 = result["aggregate"]["macro_f1"]
         print(
