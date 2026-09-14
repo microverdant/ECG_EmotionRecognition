@@ -1,101 +1,67 @@
 # WESAD Benchmark
 
-## Scope
-
-This benchmark evaluates subject-independent emotion recognition from the WESAD chest ECG channel.
-It reports the primary three-condition task: baseline, stress, and amusement. Meditation is retained
-as an optional extended task and is not mixed into the results below.
-
-## Data protocol
+## Protocol
 
 | Setting | Value |
 |---|---:|
 | Subjects | 15 |
 | Prepared windows | 2,140 |
-| Source sampling rate | 700 Hz |
-| Model sampling rate | 140 Hz |
-| Window length | 30 seconds |
-| Window stride | 15 seconds |
+| Task | Baseline, stress, amusement |
+| Source / model rate | 700 Hz / 140 Hz |
+| Window / stride | 30 s / 15 s |
 | Minimum label purity | 90% |
-| Evaluation | 5-fold GroupKFold by subject |
+| Evaluation | 5-fold StratifiedGroupKFold by subject |
 
-Raw data was filtered before anti-aliased resampling. Subject identifiers remain attached to every
-window, and no subject appears in both the train and test partitions of a fold.
+Raw ECG is filtered before resampling. Each feature window is normalized independently, and all
+learned scalers are fit within the training partition only. R-R intervals outside 0.30–2.00 seconds
+are excluded before HRV calculations. No participant appears in both train and test partitions.
 
-## Feature baseline results
+## Primary results
 
-Values are the mean and population standard deviation across five subject-held-out folds.
+Values are the mean ± population standard deviation across five subject-held-out folds.
 
-| Model | Accuracy | Balanced accuracy | Macro precision | Macro recall | Macro-F1 |
-|---|---:|---:|---:|---:|---:|
-| Logistic Regression | 0.5914 ± 0.0958 | 0.6207 ± 0.0251 | 0.6074 ± 0.0529 | 0.6207 ± 0.0251 | **0.5716 ± 0.0721** |
-| Random Forest | 0.5643 ± 0.0760 | 0.4970 ± 0.0630 | 0.5311 ± 0.0724 | 0.4970 ± 0.0630 | 0.4909 ± 0.0626 |
-| RBF-SVM | 0.5492 ± 0.1353 | 0.5271 ± 0.0957 | 0.5426 ± 0.1252 | 0.5271 ± 0.0957 | 0.5154 ± 0.1224 |
+| Model | Accuracy | Balanced accuracy | Macro-F1 | Assessment |
+|---|---:|---:|---:|---|
+| Logistic Regression | 0.5581 ± 0.1064 | 0.5422 ± 0.1009 | **0.5192 ± 0.1011** | Selected, regularized baseline |
+| Random Forest | 0.6021 ± 0.1007 | 0.5089 ± 0.0635 | 0.4758 ± 0.0767 | Reject: train Macro-F1 0.997 |
+| RBF-SVM | 0.5832 ± 0.0492 | 0.5322 ± 0.0496 | 0.5156 ± 0.0601 | Reject: train Macro-F1 0.888 |
 
-### Logistic Regression folds
+The feature results are not strong enough to claim broad emotion recognition. They are a realistic
+subject-independent baseline. Logistic Regression is selected because it has a much smaller
+train-to-validation gap (0.748 to 0.589 Macro-F1) than the nonlinear alternatives, and its feature
+weights remain inspectable.
 
-| Fold | Held-out subjects | Accuracy | Macro-F1 |
-|---:|---|---:|---:|
-| 1 | S17, S3, S9 | 0.6946 | 0.6386 |
-| 2 | S10, S13, S2 | 0.4789 | 0.4868 |
-| 3 | S5, S6, S8 | 0.6340 | 0.6260 |
-| 4 | S14, S16, S7 | 0.4743 | 0.4803 |
-| 5 | S11, S15, S4 | 0.6752 | 0.6265 |
+## Robustness checks
 
-The variance between folds is material. Reporting only the strongest split would overstate expected
-performance on unseen subjects.
-
-## Tiny CNN iteration
-
-The neural iteration below uses one locked subject-level train/validation/test split and therefore
-must not be compared directly with the five-fold means above. The purpose of this table is to show
-the measured impact of the architecture change on the same split.
-
-| Model | Parameters | Epochs | Training time | Test accuracy | Test balanced accuracy | Test Macro-F1 |
-|---|---:|---:|---:|---:|---:|---:|
-| Tiny CNN v1 | 43,939 | 13 | 55.69 s | 0.3247 | 0.4570 | 0.3003 |
-| Tiny CNN v2 | 57,075 | 14 | 39.87 s | **0.5741** | **0.4781** | **0.4476** |
-
-Tiny CNN v2 replaces BatchNorm with GroupNorm, adds temporal statistics pooling, and uses lightweight
-augmentation, label smoothing, and validation-driven learning-rate reduction. The largest remaining
-failure mode is poor generalization for amusement in the locked test subjects.
+- No zero R-peak windows, non-finite values, or mean heart rates outside 30–200 bpm occurred in the
+  prepared primary data.
+- R-R validity ratio was at least 0.972 for every window; fewer than 0.8 valid intervals occurred in
+  zero windows.
+- Participant-level Macro-F1 for Logistic Regression ranges from 0.046 to 0.848. This is evidence of
+  unresolved domain shift, so only the fold mean and spread should be cited.
 
 ## Reproduction
-
-Prepare the ignored local dataset:
 
 ```powershell
 python scripts/prepare_wesad.py `
   --input D:\path\to\WESAD `
-  --output data\processed\wesad_core_140hz_30s.npz `
+  --output data\processed\wesad_core_140hz_30s_robust.npz `
   --sample-rate 700 `
   --target-sample-rate 140 `
   --window-seconds 30 `
   --stride-seconds 15 `
   --min-label-purity 0.9 `
   --label-set core
-```
 
-Run the primary grouped baseline:
-
-```powershell
 python -m ecg_emotion.cli cross-validate-baseline `
-  --data data\processed\wesad_core_140hz_30s.npz `
-  --output artifacts\cv-core-logistic `
+  --data data\processed\wesad_core_140hz_30s_robust.npz `
+  --output artifacts\wesad-core-robust-logistic `
   --model logistic-regression `
   --sample-rate 140 `
   --folds 5 `
   --seed 42
 ```
 
-## Limitations and next work
-
-- Neural results require grouped cross-validation before they can be treated as a final benchmark.
-- Hyperparameter selection is not nested inside the outer subject folds.
-- Short-window HRV frequency features are approximate and should not be interpreted clinically.
-- WESAD labels describe controlled study conditions, not a medical diagnosis.
-- Future work should assess confidence calibration and subject-domain adaptation.
-
-No raw WESAD files, prepared windows, fitted models, or participant-level artifacts are committed to
-this repository.
-
+The optional Tiny CNN is not included in the formal benchmark because it has only been evaluated on a
+single locked subject split. Raw WESAD files, prepared windows, fitted models, and participant-level
+artifacts are not committed.

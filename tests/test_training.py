@@ -84,5 +84,7 @@ def test_group_cross_validation_saves_aggregate_metrics(tmp_path: Path) -> None:
         random_seed=4,
     )
     assert len(result["folds"]) == 3
+    assert result["split_strategy"] == "StratifiedGroupKFold"
+    assert len(result["per_subject"]) == 6
     assert 0.0 <= result["aggregate"]["macro_f1"]["mean"] <= 1.0
     assert (output_dir / "cross_validation.json").exists()

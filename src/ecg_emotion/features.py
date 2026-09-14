@@ -1,4 +1,4 @@
-"""Fast, interpretable ECG and short-window HRV features."""
+"""Fast, interpretable and participant-robust ECG/short-window HRV features."""
 
 from __future__ import annotations
 
@@ -8,13 +8,12 @@ from scipy.signal import butter, find_peaks, periodogram, sosfiltfilt, welch
 from scipy.stats import kurtosis, skew
 
 FEATURE_NAMES = (
-    "signal_std",
-    "signal_rms",
     "signal_range",
     "signal_line_length",
     "signal_skewness",
     "signal_kurtosis",
     "r_peak_count",
+    "rr_valid_ratio",
     "heart_rate_mean",
     "heart_rate_std",
     "rr_mean",
@@ -88,8 +87,17 @@ def detect_r_peaks(signal: np.ndarray, sample_rate: float) -> np.ndarray:
 def _extract_single(signal: np.ndarray, sample_rate: float) -> np.ndarray:
     signal = np.nan_to_num(signal, nan=0.0, posinf=0.0, neginf=0.0)
     centered = signal - np.median(signal)
+    # Feature extraction uses only the current window's distribution.  This
+    # suppresses recording gain and electrode-contact signatures that can act
+    # as accidental participant identifiers in cross-subject evaluation.
+    centered /= max(float(np.std(centered)), 1e-8)
     peaks = detect_r_peaks(centered, sample_rate)
-    rr = np.diff(peaks) / sample_rate
+    raw_rr = np.diff(peaks) / sample_rate
+    # Physiological guardrail: reject implausible intervals caused by missed or
+    # duplicated detections before computing HRV-derived features.
+    valid_rr = (raw_rr >= 0.30) & (raw_rr <= 2.00)
+    rr = raw_rr[valid_rr]
+    rr_times = (peaks[1:] / sample_rate)[valid_rr]
     heart_rate = 60.0 / rr if len(rr) else np.empty(0)
 
     freqs, power = periodogram(centered, fs=sample_rate)
@@ -104,17 +112,16 @@ def _extract_single(signal: np.ndarray, sample_rate: float) -> np.ndarray:
         mask = (freqs >= low) & (freqs < high)
         return float(trapezoid(power[mask], freqs[mask])) if np.count_nonzero(mask) > 1 else 0.0
 
-    lf_power, hf_power = _hrv_frequency_features(peaks, rr, sample_rate)
+    lf_power, hf_power = _hrv_frequency_features(rr_times, rr)
     amplitudes = centered[peaks] if len(peaks) else np.empty(0)
     values = np.array(
         [
-            np.std(centered),
-            np.sqrt(np.mean(centered**2)),
             np.ptp(centered),
             np.mean(np.abs(np.diff(centered))) if len(centered) > 1 else 0.0,
             skew(centered, bias=False),
             kurtosis(centered, bias=False),
             len(peaks),
+            np.mean(valid_rr) if len(raw_rr) else 0.0,
             np.mean(heart_rate) if len(heart_rate) else 0.0,
             np.std(heart_rate) if len(heart_rate) else 0.0,
             np.mean(rr) if len(rr) else 0.0,
@@ -138,19 +145,17 @@ def _extract_single(signal: np.ndarray, sample_rate: float) -> np.ndarray:
 
 
 def _hrv_frequency_features(
-    peaks: np.ndarray,
+    rr_times: np.ndarray,
     rr_intervals: np.ndarray,
-    sample_rate: float,
 ) -> tuple[float, float]:
     if len(rr_intervals) < 6:
         return 0.0, 0.0
 
-    beat_times = peaks[1:] / sample_rate
     interpolation_rate = 4.0
-    interpolation_times = np.arange(beat_times[0], beat_times[-1], 1.0 / interpolation_rate)
+    interpolation_times = np.arange(rr_times[0], rr_times[-1], 1.0 / interpolation_rate)
     if len(interpolation_times) < 8:
         return 0.0, 0.0
-    tachogram = np.interp(interpolation_times, beat_times, rr_intervals)
+    tachogram = np.interp(interpolation_times, rr_times, rr_intervals)
     tachogram -= np.mean(tachogram)
     frequencies, power = welch(
         tachogram,
@@ -165,4 +170,3 @@ def _hrv_frequency_features(
         return float(trapezoid(power[mask], frequencies[mask]))
 
     return band_power(0.04, 0.15), band_power(0.15, 0.4)
-

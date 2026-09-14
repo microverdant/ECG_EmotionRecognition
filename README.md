@@ -6,53 +6,33 @@
 
 ## Project status
 
-This repository is an independent, clean-room implementation focused on methodological clarity,
-CPU-friendly experimentation, and reproducible evaluation. It contains signal processing, feature
+This independent, clean-room implementation focuses on methodological clarity, CPU-friendly
+experimentation, and reproducible evaluation. It includes signal processing, interpretable feature
 baselines, an optional compact 1D-CNN, tests, and a local inference demo.
 
 ## Research question
 
-Can a compact ECG model recognize affective states while preserving subject-level separation and
-remaining practical to run on a laptop CPU?
+Can a compact ECG model recognize controlled affective states while preserving participant-level
+separation and remaining practical to run on a laptop CPU?
 
-The project deliberately emphasizes reliable evaluation over a single optimistic score. Every final
-experiment should report the split protocol, macro-F1, balanced accuracy, confusion matrix, and
-per-subject variation.
-
-## Planned pipeline
-
-```text
-Raw ECG
-  -> quality checks and filtering
-  -> subject-level split
-  -> fixed-length windows
-  -> feature baseline and lightweight temporal model
-  -> calibrated evaluation and error analysis
-  -> local inference demo
-```
-
-## Model tracks
-
-1. HRV/statistical features with Logistic Regression and Random Forest baselines.
-2. A compact 1D-CNN for raw ECG windows.
-3. Future work: TCN and feature/representation fusion.
-
-Large recurrent architectures are not part of the default laptop workflow.
+The project prioritizes reliable evaluation over a single optimistic score. Formal experiments report
+the split protocol, Macro-F1, balanced accuracy, confusion matrix, and participant variation.
 
 ## WESAD benchmark
 
 The primary subject-independent benchmark uses 15 subjects, 2,140 windows, 140 Hz ECG, 30-second
-windows, and five-fold GroupKFold evaluation. The best current feature baseline is Logistic
-Regression with `0.5716 ± 0.0721` Macro-F1. Tiny CNN v2 contains 57,075 parameters and completed its
-locked-split laptop experiment in approximately 40 seconds.
+windows, and five-fold StratifiedGroupKFold evaluation. The selected feature baseline is a regularized
+Logistic Regression with `0.5192 ± 0.1011` Macro-F1. This modest result is deliberate: the protocol
+prioritizes honest performance on unseen people over participant-specific accuracy.
 
-See [`reports/BENCHMARK.md`](reports/BENCHMARK.md) for the full protocol, fold-level results, neural
-iteration, reproduction commands, and limitations.
+See [`reports/BENCHMARK.md`](reports/BENCHMARK.md) for the full protocol, results, reproduction
+commands, and limitations. See [`docs/MODEL_CARD.md`](docs/MODEL_CARD.md) for intended use and known
+failure modes.
 
 ## Data policy
 
-Raw participant data is not included in this repository. Users must obtain the dataset through its
-official access process and place prepared data under `data/`, following the contract in
+Raw participant data is not included in this repository. Users must obtain data through its official
+access process and place prepared data under `data/`, following
 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md). Generated data and model artifacts are ignored by
 Git by default.
 
@@ -62,7 +42,7 @@ included preparation script before training.
 ## Development principles
 
 - Split by subject before creating overlapping windows.
-- Fit normalization parameters on training subjects only.
+- Use per-window signal normalization and fit learned feature scaling on training subjects only.
 - Keep raw data, generated artifacts, and credentials out of Git.
 - Record seeds, configuration, metrics, and model metadata for every run.
 - Treat this as an experimental research tool, not a medical diagnostic system.
@@ -103,7 +83,7 @@ metrics must not be presented as research results.
 ## Roadmap
 
 - [x] Establish a modern Python project and data contract.
-- [ ] Implement filtering, windowing, and subject-level splits.
+- [x] Implement filtering, windowing, and subject-level splits.
 - [x] Add fast feature-based baselines.
 - [x] Add a compact 1D-CNN training path.
 - [x] Add evaluation artifacts and reproducibility checks.
@@ -114,5 +94,5 @@ metrics must not be presented as research results.
 
 ## License
 
-Released under the [MIT License](LICENSE). Dataset access and use remain subject to the dataset's
-own terms.
+Released under the [MIT License](LICENSE). Dataset access and use remain subject to the dataset's own
+terms.
