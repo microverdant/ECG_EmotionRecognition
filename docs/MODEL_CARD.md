@@ -5,7 +5,8 @@
 The formal feature model is a shrinkage Linear Discriminant Analysis (LDA) over 22 window-level ECG
 morphology and HRV features. It uses standardized inputs and automatic covariance shrinkage, which is
 appropriate when the number of participants is small relative to the feature dimension. It is selected
-over Random Forest, RBF-SVM, and Logistic Regression based on subject-independent cross-validation.
+over Random Forest, RBF-SVM, Logistic Regression, and the neural models based on subject-independent
+cross-validation.
 
 ## Intended use
 
@@ -27,7 +28,7 @@ It is not a clinical, wellness, safety, hiring, or mental-health decision system
 
 The primary result is five-fold `StratifiedGroupKFold`: no participant occurs in both train and test
 sets, while folds are balanced by study condition where possible. The selected model reached Macro-F1
-`0.5392 ± 0.0227` across folds. Large participant variation remains and is reported rather than
+`0.5392 +/- 0.0227` across folds. Large participant variation remains and is reported rather than
 hidden; individual Macro-F1 ranges from 0.297 to 0.751.
 
 ## Known limitations
@@ -36,8 +37,9 @@ hidden; individual Macro-F1 ranges from 0.297 to 0.751.
 - HRV frequency-domain estimates from 30-second windows are approximate.
 - Results are sensitive to participant domain shift; performance should not be assumed to transfer to
   a new device, protocol, population, or free-living setting.
-- The compact CNN has now received the same grouped cross-validation protocol, but its Macro-F1
-  (`0.4913 ± 0.0370`) is below the selected Logistic Regression baseline.
+- The compact CNN and convolutional LSTM have received the same grouped cross-validation protocol.
+  Their Macro-F1 scores are `0.4913 +/- 0.0370` and `0.5300 +/- 0.1161`, respectively; both remain below
+  the selected shrinkage LDA baseline.
 
 ## Reproducibility and privacy
 

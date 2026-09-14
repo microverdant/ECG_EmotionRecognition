@@ -1,6 +1,6 @@
 import pytest
 
-from ecg_emotion.torch_models import build_tiny_cnn
+from ecg_emotion.torch_models import build_tiny_cnn, build_tiny_lstm
 
 
 def test_tiny_cnn_has_clear_optional_dependency_error() -> None:
@@ -14,3 +14,7 @@ def test_tiny_cnn_has_clear_optional_dependency_error() -> None:
         output = model(torch_module.randn(2, 1, 512))
         assert output.shape == (2, 4)
         assert sum(parameter.numel() for parameter in model.parameters()) < 100_000
+        recurrent_model = build_tiny_lstm(num_classes=4)
+        recurrent_output = recurrent_model(torch_module.randn(2, 1, 512))
+        assert recurrent_output.shape == (2, 4)
+        assert sum(parameter.numel() for parameter in recurrent_model.parameters()) < 100_000
