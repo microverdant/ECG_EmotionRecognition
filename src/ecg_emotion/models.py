@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
@@ -22,6 +23,26 @@ def build_logistic_regression(random_seed: int = 42) -> Pipeline:
                     class_weight="balanced",
                     random_state=random_seed,
                 ),
+            ),
+        ]
+    )
+
+
+def build_shrinkage_lda(random_seed: int = 42) -> Pipeline:
+    """Build a low-variance discriminant model for small subject counts.
+
+    Automatic covariance shrinkage stabilizes the class covariance estimate
+    when the number of training participants is small relative to the feature
+    dimension.  The seed is accepted for a consistent model-factory API.
+    """
+
+    del random_seed
+    return Pipeline(
+        steps=[
+            ("scaler", StandardScaler()),
+            (
+                "classifier",
+                LinearDiscriminantAnalysis(solver="lsqr", shrinkage="auto"),
             ),
         ]
     )
@@ -67,6 +88,8 @@ def build_baseline(name: str, random_seed: int = 42):
     normalized = name.strip().lower().replace("_", "-")
     if normalized in {"logistic", "logistic-regression", "lr"}:
         return build_logistic_regression(random_seed)
+    if normalized in {"lda", "shrinkage-lda", "discriminant-analysis"}:
+        return build_shrinkage_lda(random_seed)
     if normalized in {"random-forest", "randomforest", "rf"}:
         return build_random_forest(random_seed)
     if normalized in {"svm", "rbf-svm", "svc"}:

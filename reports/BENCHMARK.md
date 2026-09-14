@@ -22,7 +22,8 @@ Values are the mean ± population standard deviation across five subject-held-ou
 
 | Model | Accuracy | Balanced accuracy | Macro-F1 | Assessment |
 |---|---:|---:|---:|---|
-| Logistic Regression | 0.5581 ± 0.1064 | 0.5422 ± 0.1009 | **0.5192 ± 0.1011** | Selected, regularized baseline |
+| Shrinkage LDA | 0.6713 ± 0.0399 | 0.5496 ± 0.0283 | **0.5392 ± 0.0227** | Selected, low-variance model |
+| Logistic Regression | 0.5581 ± 0.1064 | 0.5422 ± 0.1009 | 0.5192 ± 0.1011 | Linear comparison |
 | Random Forest | 0.6021 ± 0.1007 | 0.5089 ± 0.0635 | 0.4758 ± 0.0767 | Reject: train Macro-F1 0.997 |
 | RBF-SVM | 0.5832 ± 0.0492 | 0.5322 ± 0.0496 | 0.5156 ± 0.0601 | Reject: train Macro-F1 0.888 |
 
@@ -34,13 +35,13 @@ participant-level validation split for early stopping:
 | Tiny CNN v2 | 0.5819 ± 0.1045 | 0.5293 ± 0.0418 | 0.4913 ± 0.0370 | Robust secondary model, not selected |
 
 The CNN is more consistent across outer folds but does not outperform the feature baseline. This
-supports retaining Logistic Regression as the primary model and the CNN as a reproducible raw-signal
+supports retaining Shrinkage LDA as the primary model and the CNN as a reproducible raw-signal
 comparison.
 
 The feature results are not strong enough to claim broad emotion recognition. They are a realistic
-subject-independent baseline. Logistic Regression is selected because it has a much smaller
-train-to-validation gap (0.748 to 0.589 Macro-F1) than the nonlinear alternatives, and its feature
-weights remain inspectable.
+subject-independent baseline. Shrinkage LDA is selected because it provides the highest mean Macro-F1
+and the lowest fold variation among the candidates. On the locked holdout it reached Macro-F1 0.5201,
+with train/validation/test Macro-F1 of 0.6519/0.5494/0.5201.
 
 ## Robustness checks
 
@@ -48,7 +49,7 @@ weights remain inspectable.
   prepared primary data.
 - R-R validity ratio was at least 0.972 for every window; fewer than 0.8 valid intervals occurred in
   zero windows.
-- Participant-level Macro-F1 for Logistic Regression ranges from 0.046 to 0.848. This is evidence of
+- Participant-level Macro-F1 for Shrinkage LDA ranges from 0.297 to 0.751. This is evidence of
   unresolved domain shift, so only the fold mean and spread should be cited.
 
 ## Reproduction
@@ -66,8 +67,8 @@ python scripts/prepare_wesad.py `
 
 python -m ecg_emotion.cli cross-validate-baseline `
   --data data\processed\wesad_core_140hz_30s_robust.npz `
-  --output artifacts\wesad-core-robust-logistic `
-  --model logistic-regression `
+  --output artifacts\wesad-core-robust-shrinkage-lda `
+  --model shrinkage-lda `
   --sample-rate 140 `
   --folds 5 `
   --seed 42
