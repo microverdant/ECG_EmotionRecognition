@@ -49,3 +49,5 @@ Thumbs.db
 .env.*
 !.env.example
 
+# Private application materials
+/resume/
