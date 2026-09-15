@@ -42,7 +42,8 @@ to support aggressive rejection.
 The participant-domain analysis is available in [`reports/ROBUSTNESS.md`](reports/ROBUSTNESS.md).
 
 The complete reproducibility workflow is documented in [`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md),
-and resume-ready project bullets are available in [`docs/RESUME_BULLETS.md`](docs/RESUME_BULLETS.md).
+resume-ready project bullets are available in [`docs/RESUME_BULLETS.md`](docs/RESUME_BULLETS.md), and
+role-specific variants are collected in [`docs/RESUME_VARIANTS.md`](docs/RESUME_VARIANTS.md).
 
 ## Data policy
 
